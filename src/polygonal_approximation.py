@@ -49,8 +49,8 @@ def thick_polygonal_approximate(points, thickness=DEFAULT_THICKNESS):
 
     Args:
         points (numpy.ndarray): An 2xN matrix of the points that define the
-                closed polyline, where N is the number of points. These are
-                assumed to be sorted in clockwise or counterclockwise order.
+                closed polyline, where N is the number of points. The polygon is
+                assumed to be not self-intersecting.
         thickness (float): The threshold used to determine whether a thick
                 curve needs to be split further. This argument is optional, and
                 defaults to 8.0.
@@ -61,7 +61,6 @@ def thick_polygonal_approximate(points, thickness=DEFAULT_THICKNESS):
 
     assert(points.ndim == 2 and points.shape[0] == 2)
     assert(thickness > 0.0)
-    assert(numpy.unique(points).size == points.size)
 
     return _polyline_approx(points, thickness)
 
@@ -83,19 +82,21 @@ def _polyline_approx(points, thickness_threshold):
 
     # Compute the linear regression line for the polyline's points.
     (_, num_points) = points.shape
-    (xs, ys) = (points[0, :], points[1, :])
-    coefficient_matrix = numpy.hstack([xs.T, numpy.ones(num_points, 1)])
+    (xs, ys) = (points[0:1, :], points[1, :])
+    coefficient_matrix = numpy.concatenate([xs.T, numpy.ones([num_points, 1])],
+            axis=1)
     (solution, _, _, _) = numpy.linalg.lstsq(coefficient_matrix, ys)
     (slope, y_intercept) = solution
 
-    # Convert the line to standard form, and normalize the coefficients for a
-    # unit line vector.
-    line_vector_unnorm = numpy.array([-slope, 1, y_intercept])
-    line_vector = numpy.linalg.norm(line_vector_unnorm)
+    # Convert the line to standard form, and normalize the coefficients so they
+    # can be used directly to compute distances.
+    slope_norm = numpy.linalg.norm([-slope, 1])
+    line_vector = numpy.array([-slope, 1, -y_intercept]) / slope_norm
 
     # Create a mask to partition points based on whether they are above or below
     # the line from their distance to the line.
-    points_hom = numpy.vstack((points, numpy.ones(1, num_points)))
+    points_hom = numpy.concatenate([points, numpy.ones([1, num_points])],
+            axis=0)
     point_distances = numpy.dot(line_vector, points_hom)
     below_mask = point_distances < 0
 
