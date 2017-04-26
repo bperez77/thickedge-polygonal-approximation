@@ -94,7 +94,7 @@ def _polyline_approx(points, thickness_threshold):
     line_vector = numpy.array([-slope, 1, -y_intercept]) / slope_norm
 
     # Create a mask to partition points based on whether they are above or below
-    # the line from their distance to the line.
+    # the line from their signed distance to the line.
     points_hom = numpy.concatenate([points, numpy.ones([1, num_points])],
             axis=0)
     point_distances = numpy.dot(line_vector, points_hom)
@@ -104,8 +104,10 @@ def _polyline_approx(points, thickness_threshold):
     # compute the thickness of the polyline based on the distances.
     below_extremum_index = _find_extremum(points, point_distances, below_mask)
     above_extremum_index = _find_extremum(points, point_distances, ~below_mask)
-    thickness = _get_array_value(point_distances, below_extremum_index, 0.0)
-    thickness += _get_array_value(point_distances, above_extremum_index, 0.0)
+    thickness = abs(_get_array_value(point_distances, below_extremum_index,
+                        0.0))
+    thickness += abs(_get_array_value(point_distances, above_extremum_index,
+                        0.0))
 
     # If the thickness is below the threshold, then the two endpoints are
     # dominant points, so we're done. Otherwise, partition the points.
@@ -130,7 +132,7 @@ def _find_extremum(points, point_distances, subset_mask):
     the points."""
 
     # If the point set is empty, then no extremum exists.
-    points_subset = points[subset_mask]
+    points_subset = points[:, subset_mask]
     point_distances_subset = point_distances[subset_mask]
     if points_subset.size == 0:
         return None
@@ -149,7 +151,7 @@ def _find_column(array, column):
     # column vector.
     column_vector = column.reshape((len(column), 1))
     element_mask = (array == column_vector).all(axis=0)
-    column_indices = numpy.where(element_mask)
+    (column_indices,) = numpy.where(element_mask)
 
     assert(column_indices.size == 1)
     return column_indices[0]
@@ -179,19 +181,19 @@ def _partition_points(points, below_extremum_index, above_extremum_index):
     # then partition, making sure to respect the ordering.
     if below_extremum_index is None:
         return (
-            points[:, 0:above_extremum_index],
+            points[:, 0:above_extremum_index+1],
             points[:, above_extremum_index+1:],
             None,
         )
     elif below_extremum_index is None:
         return (
-            points[:, 0:below_extremum_index],
+            points[:, 0:below_extremum_index+1],
             points[:, below_extremum_index+1:],
             None,
         )
     elif below_extremum_index < above_extremum_index:
         return (
-            points[:, 0:below_extremum_index],
+            points[:, 0:below_extremum_index+1],
             points[:, below_extremum_index+1:above_extremum_index+1],
             points[:, above_extremum_index+1:]
         )
