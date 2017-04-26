@@ -32,10 +32,10 @@ import numpy
 #-------------------------------------------------------------------------------
 
 #: The default thickness of the edge that is used for the polygonal
-#: approximation, in terms of pixels. This is the threshold used to determine
-#: when to split a curve recursively, or to classify the endpoints as dominant
-#: points. The thickness is the sum distance of the global maximum and minimum
-#: along the polyline to the line between the two endpoints.
+#: approximation. This is the threshold used to determine when to split a curve
+#: recursively, or to classify the endpoints as dominant points. The thickness
+#: is the sum of the distance of the global maximum and minimum along the
+#: polyline to the regression line between the two endpoints.
 DEFAULT_THICKNESS = 8.0
 
 #-------------------------------------------------------------------------------
@@ -52,14 +52,14 @@ def thick_polygonal_approximate(points, thickness=DEFAULT_THICKNESS):
                 closed polyline, where N is the number of points. These are
                 assumed to be sorted in clockwise or counterclockwise order.
         thickness (float): The threshold used to determine whether a thick
-                curve needs to be split further, in terms pixels. This argument
-                is optional, and defaults to 8.0.
+                curve needs to be split further. This argument is optional, and
+                defaults to 8.0.
     Returns:
         numpy.ndarray: An 2xM matrix of the dominant points on the closed
                 polyline, where M <= N. This preserves the ordering of points.
     """
 
-    assert(points.ndim == 2 and points.shape[0] == 2 and points.shape[1] >= 2)
+    assert(points.ndim == 2 and points.shape[0] == 2)
     assert(thickness > 0.0)
     assert(numpy.unique(points).size == points.size)
 
@@ -77,7 +77,9 @@ def _polyline_approx(points, thickness_threshold):
     polyline containing only dominant points.
     """
 
-    assert(points.shape[1] >= 2)
+    # If there is only one or two points, then we have our dominant point(s)
+    if points.size <= 2:
+        return points
 
     # Compute the linear regression line for the polyline's points.
     (_, num_points) = points.shape
@@ -113,11 +115,9 @@ def _polyline_approx(points, thickness_threshold):
     # approximate the smaller polylines represented by these points.
     (points1, points2, points3) = _partition_points(points,
             below_extremum_index, above_extremum_index)
-    dominant_points = numpy.empty()
     dominant_points1 = _polyline_approx(points1, thickness_threshold)
-    dominant_points = numpy.hstack((dominant_points, dominant_points1))
     dominant_points2 = _polyline_approx(points2, thickness_threshold)
-    dominant_points = numpy.hstack((dominant_points, dominant_points2))
+    dominant_points = numpy.hstack((dominant_points1, dominant_points2))
     if points3 is not None:
         dominant_points3 = _polyline_approx(points3, thickness_threshold)
         dominant_points = numpy.hstack((dominant_points, dominant_points3))
@@ -191,6 +191,6 @@ def _partition_points(points, below_extremum_index, above_extremum_index):
     elif below_extremum_index < above_extremum_index:
         return (
             points[:, 0:below_extremum_index],
-            points[:, below_extremum_index+1:above_extremum_index],
+            points[:, below_extremum_index+1:above_extremum_index+1],
             points[:, above_extremum_index+1:]
         )
