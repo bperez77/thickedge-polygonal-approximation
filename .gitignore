@@ -1,0 +1,29 @@
+# Outline Tracking Gitignore
+
+# Exclude all files, then include in only the required ones
+*
+
+# Allow for files nested within directories.
+!*/
+
+# Allow for python, shell script, and MATLAB files
+!*.py
+!*.sh
+!*.m
+
+# Allow for C or C++ files
+!*.c
+!*.cpp
+!*.h
+!*.hpp
+
+# Allow for Makefiles
+!Makefile
+
+# Allow for Latex files
+!*.tex
+
+# Allow for gitignore, license, and README files
+!.gitignore
+!LICENSE
+!README.md
