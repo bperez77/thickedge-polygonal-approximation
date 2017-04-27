@@ -28,21 +28,10 @@ This file's interface can be imported as follows:
 import numpy
 
 #-------------------------------------------------------------------------------
-# Internal Definitions
-#-------------------------------------------------------------------------------
-
-#: The default thickness of the edge that is used for the polygonal
-#: approximation. This is the threshold used to determine when to split a curve
-#: recursively, or to classify the endpoints as dominant points. The thickness
-#: is the sum of the distance of the global maximum and minimum along the
-#: polyline to the regression line between the two endpoints.
-DEFAULT_THICKNESS = 8.0
-
-#-------------------------------------------------------------------------------
 # Public Interface
 #-------------------------------------------------------------------------------
 
-def thick_polygonal_approximate(points, thickness=DEFAULT_THICKNESS):
+def thick_polygonal_approximate(points, thickness):
     """Given an array of points defining a closed polyline, or polygon, filters
     the points so that only the dominant points along the closed polyline
     remain.
@@ -195,5 +184,11 @@ def _partition_points(points, below_extremum_index, above_extremum_index):
         return (
             points[:, 0:below_extremum_index+1],
             points[:, below_extremum_index+1:above_extremum_index+1],
-            points[:, above_extremum_index+1:]
+            points[:, above_extremum_index+1:],
+        )
+    else:
+        return (
+            points[:, 0:above_extremum_index+1],
+            points[:, above_extremum_index+1:below_extremum_index+1],
+            points[:, below_extremum_index+1:],
         )
