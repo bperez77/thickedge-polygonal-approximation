@@ -63,34 +63,34 @@ def _polyline_approx(points, thickness_threshold):
     """
 
     # If there is only one or two points, then we have our dominant point(s)
+    assert(points.size != 0)
     if points.size <= 2:
         return points
 
-    # Compute the linear regression line for polyline's points, then normalize
-    # it to compute distances.
-    (a_value, b_value, c_value) = _compute_regression_line(points)
+    # Compute the line between the two endpoints of the polyline, then normalize
+    # the standard form so it can be used to directly compute distances.
+    ((x0, y0), (x1, y1)) = (points[:, 0], points[:, -1])
+    (a_value, b_value) = (y1 - y0, -(x1 - x0))
+    c_value = -(a_value * x0 + b_value * y0)
     ab_norm = numpy.linalg.norm([a_value, b_value])
     line_vector = numpy.array([a_value, b_value, c_value]) / ab_norm
 
-    # Create a mask to partition points based on whether they are above or below
-    # the line from their signed distance to the line.
-    (_, num_points) = points.shape
-    points_hom = numpy.concatenate([points, numpy.ones([1, num_points])],
-            axis=0)
-    point_distances = numpy.dot(line_vector, points_hom)
+    # Find the extreme points in the set of points above and below the line. The
+    # points are partitioned based on their signed distance from the line.
+    point_distances = numpy.dot(line_vector[0:2], points) + line_vector[2]
     below_mask = point_distances < 0
 
     # Find the extreme points in the above and below sets, and use them to
     # compute the thickness of the polyline based on the distances.
     below_extremum_index = _find_extremum(points, point_distances, below_mask)
     above_extremum_index = _find_extremum(points, point_distances, ~below_mask)
+
+    # Compute the thickness based on the distance of the extreme points from the
+    # line. If it is above the threshold, the endpoints are dominant.
     thickness = abs(_get_array_value(point_distances, below_extremum_index,
                         0.0))
     thickness += abs(_get_array_value(point_distances, above_extremum_index,
                         0.0))
-
-    # If the thickness is below the threshold, then the two endpoints are
-    # dominant points, so we're done. Otherwise, partition the points.
     if thickness < thickness_threshold:
         return points[:, (0, -1)]
 
@@ -106,25 +106,6 @@ def _polyline_approx(points, thickness_threshold):
         dominant_points = numpy.hstack((dominant_points, dominant_points3))
 
     return dominant_points
-
-def _compute_regression_line(points):
-    """Computes the regression line for the given points, which is the one that
-    minimizes the squared distance from the points to the line. This is done via
-    total least squares (or orthogonal distance) regression to deal with
-    vertical or near vertical lines."""
-
-    # Perform PCA decomposition on the points, and get the largest PCA vector.
-    covar_matrix = numpy.cov(points)
-    (eigenvalues, eigenvectors) = numpy.linalg.eig(covar_matrix)
-    max_index = numpy.argmax(eigenvalues)
-    max_pca_vector = eigenvectors[:, max_index]
-
-    # The total least squares regression line's a and b values are given by the
-    # max PCA vector. Use these to find the c value for the standard form.
-    (a_value, b_value) = (max_pca_vector[1], -max_pca_vector[0])
-    mean_point = numpy.mean(points, axis=1)
-    c_value = -numpy.dot([a_value, b_value], mean_point)
-    return (a_value, b_value, c_value)
 
 def _find_extremum(points, point_distances, subset_mask):
     """Finds the index of the minimum or maximum point from the given subset of
@@ -170,35 +151,35 @@ def _partition_points(points, below_extremum_index, above_extremum_index):
 
     (_, num_points) = points.shape
     assert(below_extremum_index is not None or above_extremum_index is not None)
+    assert(above_extremum_index != below_extremum_index)
     assert(below_extremum_index is None or
             below_extremum_index + 1 < num_points)
     assert(above_extremum_index is None or
             above_extremum_index + 1 < num_points)
-    assert(above_extremum_index != below_extremum_index)
 
     # Partition the points based on which extrema doesn't exist. If both do,
     # then partition, making sure to respect the ordering.
     if below_extremum_index is None:
         return (
             points[:, 0:above_extremum_index+1],
-            points[:, above_extremum_index+1:],
+            points[:, above_extremum_index:],
             None,
         )
-    elif below_extremum_index is None:
+    elif above_extremum_index is None:
         return (
             points[:, 0:below_extremum_index+1],
-            points[:, below_extremum_index+1:],
+            points[:, below_extremum_index:],
             None,
         )
     elif below_extremum_index < above_extremum_index:
         return (
             points[:, 0:below_extremum_index+1],
-            points[:, below_extremum_index+1:above_extremum_index+1],
-            points[:, above_extremum_index+1:],
+            points[:, below_extremum_index:above_extremum_index+1],
+            points[:, above_extremum_index:],
         )
     else:
         return (
             points[:, 0:above_extremum_index+1],
-            points[:, above_extremum_index+1:below_extremum_index+1],
-            points[:, below_extremum_index+1:],
+            points[:, above_extremum_index:below_extremum_index+1],
+            points[:, below_extremum_index:],
         )
