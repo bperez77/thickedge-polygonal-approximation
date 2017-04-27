@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """
 polygonal_approximation.py
 
@@ -41,8 +39,7 @@ def thick_polygonal_approximate(points, thickness):
                 closed polyline, where N is the number of points. The polygon is
                 assumed to be not self-intersecting.
         thickness (float): The threshold used to determine whether a thick
-                curve needs to be split further. This argument is optional, and
-                defaults to 8.0.
+                curve needs to be split further.
     Returns:
         numpy.ndarray: An 2xM matrix of the dominant points on the closed
                 polyline, where M <= N. This preserves the ordering of points.
@@ -69,21 +66,15 @@ def _polyline_approx(points, thickness_threshold):
     if points.size <= 2:
         return points
 
-    # Compute the linear regression line for the polyline's points.
-    (_, num_points) = points.shape
-    (xs, ys) = (points[0:1, :], points[1, :])
-    coefficient_matrix = numpy.concatenate([xs.T, numpy.ones([num_points, 1])],
-            axis=1)
-    (solution, _, _, _) = numpy.linalg.lstsq(coefficient_matrix, ys)
-    (slope, y_intercept) = solution
-
-    # Convert the line to standard form, and normalize the coefficients so they
-    # can be used directly to compute distances.
-    slope_norm = numpy.linalg.norm([-slope, 1])
-    line_vector = numpy.array([-slope, 1, -y_intercept]) / slope_norm
+    # Compute the linear regression line for polyline's points, then normalize
+    # it to compute distances.
+    (a_value, b_value, c_value) = _compute_regression_line(points)
+    ab_norm = numpy.linalg.norm([a_value, b_value])
+    line_vector = numpy.array([a_value, b_value, c_value]) / ab_norm
 
     # Create a mask to partition points based on whether they are above or below
     # the line from their signed distance to the line.
+    (_, num_points) = points.shape
     points_hom = numpy.concatenate([points, numpy.ones([1, num_points])],
             axis=0)
     point_distances = numpy.dot(line_vector, points_hom)
@@ -115,6 +106,25 @@ def _polyline_approx(points, thickness_threshold):
         dominant_points = numpy.hstack((dominant_points, dominant_points3))
 
     return dominant_points
+
+def _compute_regression_line(points):
+    """Computes the regression line for the given points, which is the one that
+    minimizes the squared distance from the points to the line. This is done via
+    total least squares (or orthogonal distance) regression to deal with
+    vertical or near vertical lines."""
+
+    # Perform PCA decomposition on the points, and get the largest PCA vector.
+    covar_matrix = numpy.cov(points)
+    (eigenvalues, eigenvectors) = numpy.linalg.eig(covar_matrix)
+    max_index = numpy.argmax(eigenvalues)
+    max_pca_vector = eigenvectors[:, max_index]
+
+    # The total least squares regression line's a and b values are given by the
+    # max PCA vector. Use these to find the c value for the standard form.
+    (a_value, b_value) = (max_pca_vector[1], -max_pca_vector[0])
+    mean_point = numpy.mean(points, axis=1)
+    c_value = -numpy.dot([a_value, b_value], mean_point)
+    return (a_value, b_value, c_value)
 
 def _find_extremum(points, point_distances, subset_mask):
     """Finds the index of the minimum or maximum point from the given subset of
