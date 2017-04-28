@@ -24,6 +24,7 @@ This file's interface can be imported as follows:
 
 # General Imports
 import numpy
+from collections import OrderedDict
 
 #-------------------------------------------------------------------------------
 # Public Interface
@@ -48,7 +49,8 @@ def thick_polygonal_approximate(points, thickness):
     assert(points.ndim == 2 and points.shape[0] == 2)
     assert(thickness > 0.0)
 
-    return _polyline_approx(points, thickness)
+    dominant_points_dict = _polyline_approx(points, thickness)
+    return numpy.array(list(dominant_points_dict.keys())).T
 
 #-------------------------------------------------------------------------------
 # Helper Functions
@@ -65,7 +67,7 @@ def _polyline_approx(points, thickness_threshold):
     # If there is only one or two points, then we have our dominant point(s)
     assert(points.size != 0)
     if points.size <= 2:
-        return points
+        return _points_to_ordered_dict(points)
 
     # Compute the line between the two endpoints of the polyline, then normalize
     # the standard form so it can be used to directly compute distances.
@@ -79,9 +81,6 @@ def _polyline_approx(points, thickness_threshold):
     # points are partitioned based on their signed distance from the line.
     point_distances = numpy.dot(line_vector[0:2], points) + line_vector[2]
     below_mask = point_distances < 0
-
-    # Find the extreme points in the above and below sets, and use them to
-    # compute the thickness of the polyline based on the distances.
     below_extremum_index = _find_extremum(points, point_distances, below_mask)
     above_extremum_index = _find_extremum(points, point_distances, ~below_mask)
 
@@ -92,20 +91,26 @@ def _polyline_approx(points, thickness_threshold):
     thickness += abs(_get_array_value(point_distances, above_extremum_index,
                         0.0))
     if thickness < thickness_threshold:
-        return points[:, (0, -1)]
+        return _points_to_ordered_dict(points[:, (0, -1)])
 
     # Otherwise, partition the points based on the extreme values. Recursively
     # approximate the smaller polylines represented by these points.
     (points1, points2, points3) = _partition_points(points,
             below_extremum_index, above_extremum_index)
-    dominant_points1 = _polyline_approx(points1, thickness_threshold)
-    dominant_points2 = _polyline_approx(points2, thickness_threshold)
-    dominant_points = numpy.hstack((dominant_points1, dominant_points2))
+    dominant_points = _polyline_approx(points1, thickness_threshold)
+    dominant_points.update(_polyline_approx(points2, thickness_threshold))
     if points3 is not None:
-        dominant_points3 = _polyline_approx(points3, thickness_threshold)
-        dominant_points = numpy.hstack((dominant_points, dominant_points3))
+        dominant_points.update(_polyline_approx(points3, thickness_threshold))
 
     return dominant_points
+
+def _points_to_ordered_dict(points):
+    """Converts the given points to an ordered dictionary, treating the columns
+    as points, which are used as keys."""
+
+    (_, num_points) = points.shape
+    generator = ((tuple(points[:, i]), None) for i in range(num_points))
+    return OrderedDict(generator)
 
 def _find_extremum(points, point_distances, subset_mask):
     """Finds the index of the minimum or maximum point from the given subset of
