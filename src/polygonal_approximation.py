@@ -65,7 +65,7 @@ def _polyline_approx(points, thickness_threshold):
     """
 
     # If there is only one or two points, then we have our dominant point(s)
-    assert(points.size != 0)
+    assert(points.size > 1)
     if points.size <= 2:
         return _points_to_ordered_dict(points)
 
@@ -114,32 +114,24 @@ def _points_to_ordered_dict(points):
 
 def _find_extremum(points, point_distances, subset_mask):
     """Finds the index of the minimum or maximum point from the given subset of
-    the points."""
+    the points. The endpoints of point list are excluded."""
+
+    # Exclude the first and last points (endpoints) from the subset.
+    points_excluded = points[:, 1:-1]
+    point_distances_excluded = point_distances[1:-1]
+    subset_mask_excluded = subset_mask[1:-1]
 
     # If the point set is empty, then no extremum exists.
-    points_subset = points[:, subset_mask]
-    point_distances_subset = point_distances[subset_mask]
+    points_subset = points_excluded[:, subset_mask_excluded]
+    point_distances_subset = point_distances_excluded[subset_mask_excluded]
     if points_subset.size == 0:
         return None
 
-    # Otherwise, find the extreme value based on the absolute distance to the
-    # line within the specified subset.
-    extremum_subset_index = numpy.argmax(numpy.absolute(point_distances_subset))
-    extremum = points_subset[:, extremum_subset_index]
-    return _find_column(points, extremum)
-
-def _find_column(array, column):
-    """Finds the column in the given matrix, returning its index. Fails if the
-    column does not exist, or is present more than once."""
-
-    # Search for the column in the array, making sure the input column is a
-    # column vector.
-    column_vector = column.reshape((len(column), 1))
-    element_mask = (array == column_vector).all(axis=0)
-    (column_indices,) = numpy.where(element_mask)
-
-    assert(column_indices.size == 1)
-    return column_indices[0]
+    # Otherwise, find the extreme value based on the absolute distance from the
+    # line. Make sure to account for the missing first point in the index.
+    subset_indices = numpy.where(subset_mask_excluded)
+    extremum_index = numpy.argmax(numpy.absolute(point_distances_subset))
+    return subset_indices[0][extremum_index] + 1
 
 def _get_array_value(array, index, default):
     """Returns the array[index], or default if the index is None"""
@@ -157,10 +149,10 @@ def _partition_points(points, below_extremum_index, above_extremum_index):
     (_, num_points) = points.shape
     assert(below_extremum_index is not None or above_extremum_index is not None)
     assert(above_extremum_index != below_extremum_index)
-    assert(below_extremum_index is None or
-            below_extremum_index + 1 < num_points)
-    assert(above_extremum_index is None or
-            above_extremum_index + 1 < num_points)
+    assert(below_extremum_index is None or (below_extremum_index > 0 and
+            below_extremum_index < num_points - 1))
+    assert(above_extremum_index is None or (above_extremum_index > 0 and
+            above_extremum_index < num_points - 1))
 
     # Partition the points based on which extrema doesn't exist. If both do,
     # then partition, making sure to respect the ordering.
