@@ -41,7 +41,7 @@ import libbgs
 bgs = libbgs.LBMixtureOfGaussians() #libbgs.FrameDifference()
 
 # Display intermediate images for debugging
-debug = 1
+debug = 0
 
 
 #------------------------------------------------------------------------------
@@ -160,10 +160,12 @@ def _process_frame(frame):
     # None for kernel uses default 3x3 gaussian kernel
     img_post = cv2.erode(img_output, None)
     img_post = cv2.dilate(img_post, None, iterations=10)
+    img_post = cv2.erode(img_post, None, iterations=8)
     
     # Canny edge detector to find all objects
-    edges = cv2.Canny(img_post, 2000, 4000, apertureSize=5)
-
+    edges = cv2.Canny(img_post, 1000, 3000, apertureSize=5)
+    edges = cv2.dilate(edges, None, iterations=1)
+    
 
     if debug:
         cv2.imshow('video', frame)

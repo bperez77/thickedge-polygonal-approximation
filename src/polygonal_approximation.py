@@ -90,6 +90,7 @@ def _polyline_approx(points, thickness_threshold):
                         0.0))
     thickness += abs(_get_array_value(point_distances, above_extremum_index,
                         0.0))
+
     if thickness < thickness_threshold:
         return _points_to_ordered_dict(points[:, (0, -1)])
 
