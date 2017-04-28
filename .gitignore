@@ -17,10 +17,19 @@
 !*.h
 !*.hpp
 
+# Allow for the background subtraction library
+!/src/libbgs.so
+
 # Allow for Makefiles
 !Makefile
 
-# Allow for Latex files
+# Allow for video and image files
+!*.avi
+!*.png
+!*.jpg
+
+# Allow for Latex and XML files
+!*.xml
 !*.tex
 
 # Allow for gitignore, license, and README files
