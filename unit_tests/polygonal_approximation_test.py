@@ -20,7 +20,8 @@ import unittest
 from matplotlib import pyplot
 
 # Add the src directory to the PYTHONPATH
-sys.path.append(os.path.realpath(os.path.join('..', 'src')))
+sys.path.append(os.path.realpath(os.path.join(os.path.dirname(__file__), '..',
+        'src')))
 
 # Local Imports
 from polygonal_approximation import thick_polygonal_approximate
@@ -214,12 +215,14 @@ class BasicUnitTests(unittest.TestCase):
 
         # Report the results to the user
         print("\nLarge Point Set Test Results:")
-        print("\tOriginal Polygon Vertices:     {}".format(original_vertices))
-        print("\tApproximated Polygon Vertices: {}".format(new_vertices))
-        print("\tOriginal Polygon Area:         {:0.3f}".format(original_area))
-        print("\tApproximated Polygon Area:     {:0.3f}".format(new_area))
-        print("\tVertex Percentage Difference:  {:0.3f}%".format(vertex_diff))
-        print("\tArea Percentage Difference:    {:0.3f}%".format(area_diff))
+        print("\tOriginal Polygon Vertices:     {:<10}".format(
+                original_vertices))
+        print("\tOriginal Polygon Area:         {:<10.3f}".format(
+                original_area))
+        print("\tApproximated Polygon Vertices: {:<10} ({:0.3f}%)".format(
+                new_vertices, vertex_diff))
+        print("\tApproximated Polygon Area:     {:<10.3f} ({:0.3f}%)".format(
+                new_area, area_diff))
 
         # If specified on the command line, show the plot
         if BasicUnitTests.LARGE_POINT_SET_SHOW_PLOT:
