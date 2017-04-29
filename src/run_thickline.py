@@ -45,7 +45,8 @@ def main():
         i += 1
 
         if cv2.waitKey(50) > 0:
-            break
+            print 'Saving file...'
+            cv2.imwrite('%s_%d.png' % (video_file, i), frame)
 
         # End of video
         if pos_frame == capture.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT):

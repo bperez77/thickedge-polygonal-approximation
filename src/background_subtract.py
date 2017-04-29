@@ -184,7 +184,12 @@ def _process_frame(frame):
         cv2.imshow('edges', edges)
 
         # Pause 50ms between frames
-        cv2.waitKey(50)
+        if cv2.waitKey(50) > 0:
+            print('Saving images...')
+            cv2.imwrite('original.png', frame)            
+            cv2.imwrite('backsub.png', img_output)            
+            cv2.imwrite('mask.png', img_post)      
+            cv2.imwrite('edges.png', edges)            
 
     return edges
 
