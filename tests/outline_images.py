@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 
 """
 outline_images.py
@@ -132,7 +132,7 @@ def overlay_polygon(image, polygon, image_name, polygon_name, output_dir):
     pyplot.plot(polygon_closed[:, 0], polygon_closed[:, 1], 'r', color='r')
     if polygon_name == "approx":
         pyplot.plot(polygon_closed[:, 0], polygon_closed[:, 1], 'o', color='b',
-                markersize=5)
+                markersize=3)
 
     # Trim all of the unnecessary whitespace from the plot
     pyplot.axis('off')
@@ -153,9 +153,8 @@ def approximate_polygon(args, dir_path, image_name, image):
     image and saved to file. Stats the polygons are returned."""
 
     # Find the polygons in the image, and verify there is only one.
-    # FIXME: FindContours should only return two parameters
     gray_image = cv2.cvtColor(image, code=cv2.COLOR_BGR2GRAY)
-    (_, contours, _) = cv2.findContours(gray_image, cv2.RETR_EXTERNAL,
+    (contours, _) = cv2.findContours(gray_image, cv2.RETR_EXTERNAL,
             cv2.CHAIN_APPROX_SIMPLE)
     if len(contours) != 1:
         return None
