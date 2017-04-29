@@ -23,19 +23,17 @@
 # Allow for Makefiles
 !Makefile
 
-# Allow for video and image files
-!*.avi
-!*.png
-!*.jpg
-
-# Ignore the directory where the results typically go
-/results
+# Allow for video and image files in the data directory
+!/data/**/*.avi
+!/data/**/*.png
+!/data/**/*.jpg
 
 # Allow for Latex and XML files
 !*.xml
 !*.tex
 
-# Allow for gitignore, license, and README files
+# Allow for gitignore, gitmodules, license, and README files
 !.gitignore
+!.gitmodules
 !LICENSE
 !README.md
