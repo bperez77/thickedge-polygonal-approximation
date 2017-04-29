@@ -36,21 +36,21 @@ def thick_polygonal_approximate(points, thickness):
     remain.
 
     Args:
-        points (numpy.ndarray): An 2xN matrix of the points that define the
+        points (numpy.ndarray): An Nx2 matrix of the points that define the
                 closed polyline, where N is the number of points. The polygon is
                 assumed to be not self-intersecting.
         thickness (float): The threshold used to determine whether a thick
                 curve needs to be split further.
     Returns:
-        numpy.ndarray: An 2xM matrix of the dominant points on the closed
+        numpy.ndarray: An Mx2 matrix of the dominant points on the closed
                 polyline, where M <= N. This preserves the ordering of points.
     """
 
-    assert(points.ndim == 2 and points.shape[0] == 2)
+    assert(points.ndim == 2 and points.shape[1] == 2)
     assert(thickness > 0.0)
 
     dominant_points_dict = _polyline_approx(points, thickness)
-    return numpy.array(list(dominant_points_dict.keys())).T
+    return numpy.array(list(dominant_points_dict.keys()))
 
 #-------------------------------------------------------------------------------
 # Helper Functions
@@ -65,13 +65,15 @@ def _polyline_approx(points, thickness_threshold):
     """
 
     # If there is only one or two points, then we have our dominant point(s)
-    assert(points.size > 1)
-    if points.size <= 2:
+    assert(points.ndim == 2 and points.shape[1] == 2)
+    (num_points, _) = points.shape
+    assert(num_points > 1)
+    if num_points <= 2:
         return _points_to_ordered_dict(points)
 
     # Compute the line between the two endpoints of the polyline, then normalize
     # the standard form so it can be used to directly compute distances.
-    ((x0, y0), (x1, y1)) = (points[:, 0], points[:, -1])
+    ((x0, y0), (x1, y1)) = (points[0, :], points[-1, :])
     (a_value, b_value) = (y1 - y0, -(x1 - x0))
     c_value = -(a_value * x0 + b_value * y0)
     ab_norm = numpy.linalg.norm([a_value, b_value])
@@ -79,7 +81,7 @@ def _polyline_approx(points, thickness_threshold):
 
     # Find the extreme points in the set of points above and below the line. The
     # points are partitioned based on their signed distance from the line.
-    point_distances = numpy.dot(line_vector[0:2], points) + line_vector[2]
+    point_distances = numpy.dot(points, line_vector[0:2]) + line_vector[2]
     below_mask = point_distances < 0
     below_extremum_index = _find_extremum(points, point_distances, below_mask)
     above_extremum_index = _find_extremum(points, point_distances, ~below_mask)
@@ -92,7 +94,7 @@ def _polyline_approx(points, thickness_threshold):
                         0.0))
 
     if thickness < thickness_threshold:
-        return _points_to_ordered_dict(points[:, (0, -1)])
+        return _points_to_ordered_dict(points[(0, -1), :])
 
     # Otherwise, partition the points based on the extreme values. Recursively
     # approximate the smaller polylines represented by these points.
@@ -109,8 +111,8 @@ def _points_to_ordered_dict(points):
     """Converts the given points to an ordered dictionary, treating the columns
     as points, which are used as keys."""
 
-    (_, num_points) = points.shape
-    generator = ((tuple(points[:, i]), None) for i in range(num_points))
+    (num_points, _) = points.shape
+    generator = ((tuple(points[i, :]), None) for i in range(num_points))
     return OrderedDict(generator)
 
 def _find_extremum(points, point_distances, subset_mask):
@@ -118,12 +120,12 @@ def _find_extremum(points, point_distances, subset_mask):
     the points. The endpoints of point list are excluded."""
 
     # Exclude the first and last points (endpoints) from the subset.
-    points_excluded = points[:, 1:-1]
+    points_excluded = points[1:-1, :]
     point_distances_excluded = point_distances[1:-1]
     subset_mask_excluded = subset_mask[1:-1]
 
     # If the point set is empty, then no extremum exists.
-    points_subset = points_excluded[:, subset_mask_excluded]
+    points_subset = points_excluded[subset_mask_excluded, :]
     point_distances_subset = point_distances_excluded[subset_mask_excluded]
     if points_subset.size == 0:
         return None
@@ -147,7 +149,7 @@ def _partition_points(points, below_extremum_index, above_extremum_index):
     point to each of the extrema, and finally to the end point. If a extremum
     does not exist, then the third partition is None."""
 
-    (_, num_points) = points.shape
+    (num_points, _) = points.shape
     assert(below_extremum_index is not None or above_extremum_index is not None)
     assert(above_extremum_index != below_extremum_index)
     assert(below_extremum_index is None or (below_extremum_index > 0 and
@@ -159,25 +161,25 @@ def _partition_points(points, below_extremum_index, above_extremum_index):
     # then partition, making sure to respect the ordering.
     if below_extremum_index is None:
         return (
-            points[:, 0:above_extremum_index+1],
-            points[:, above_extremum_index:],
+            points[0:above_extremum_index+1, :],
+            points[above_extremum_index:, :],
             None,
         )
     elif above_extremum_index is None:
         return (
-            points[:, 0:below_extremum_index+1],
-            points[:, below_extremum_index:],
+            points[0:below_extremum_index+1, :],
+            points[below_extremum_index:, :],
             None,
         )
     elif below_extremum_index < above_extremum_index:
         return (
-            points[:, 0:below_extremum_index+1],
-            points[:, below_extremum_index:above_extremum_index+1],
-            points[:, above_extremum_index:],
+            points[0:below_extremum_index+1, :],
+            points[below_extremum_index:above_extremum_index+1, :],
+            points[above_extremum_index:, :],
         )
     else:
         return (
-            points[:, 0:above_extremum_index+1],
-            points[:, above_extremum_index:below_extremum_index+1],
-            points[:, below_extremum_index:],
+            points[0:above_extremum_index+1, :],
+            points[above_extremum_index:below_extremum_index+1, :],
+            points[below_extremum_index:, :],
         )

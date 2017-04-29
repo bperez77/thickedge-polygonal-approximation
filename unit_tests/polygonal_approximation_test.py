@@ -38,7 +38,6 @@ class BasicUnitTests(unittest.TestCase):
     # polygons for the large point test.
     LARGE_POINT_SET_SHOW_PLOT = False
 
-    @unittest.skip("")
     def test_thin_curve(self):
         """Tests the function with a simple 4-point polyline with a min and max
         that are not thick enough to be considered dominant points."""
@@ -50,16 +49,15 @@ class BasicUnitTests(unittest.TestCase):
             [30, 15],
             [40, 25],
             [50, 23],
-        ]).T
+        ])
         dominant_points = thick_polygonal_approximate(points, thickness)
 
         # Verify the output
         self.assertIsInstance(dominant_points, numpy.ndarray)
         self.assertEqual(dominant_points.shape, (2, 2))
-        self.assertTrue(numpy.array_equal(dominant_points.T,
+        self.assertTrue(numpy.array_equal(dominant_points,
                 [[20, 20], [50, 23]]))
 
-    @unittest.skip("")
     def test_thick_curve(self):
         """Tests the function with a simple 4-point polyline with a min and max
         that are thick enough, so all points are dominant."""
@@ -71,15 +69,14 @@ class BasicUnitTests(unittest.TestCase):
             [30, 30],
             [40, 170],
             [50, 105],
-        ]).T
+        ])
         dominant_points = thick_polygonal_approximate(points, thickness)
 
         # Verify the output
         self.assertIsInstance(dominant_points, numpy.ndarray)
-        self.assertEqual(dominant_points.shape, (2, 4))
+        self.assertEqual(dominant_points.shape, points.shape)
         self.assertTrue(numpy.array_equal(dominant_points, points))
 
-    @unittest.skip("")
     def test_reverse_order(self):
         """Tests that the function can also handle points in reverse order. This
         is the same test as the thick_curve_test, with the ordering of the
@@ -92,15 +89,14 @@ class BasicUnitTests(unittest.TestCase):
             [40, 170],
             [30, 30],
             [20, 100],
-        ]).T
+        ])
         dominant_points = thick_polygonal_approximate(points, thickness)
 
         # Verify the output
         self.assertIsInstance(dominant_points, numpy.ndarray)
-        self.assertEqual(dominant_points.shape, (2, 4))
+        self.assertEqual(dominant_points.shape, points.shape)
         self.assertTrue(numpy.array_equal(dominant_points, points))
 
-    @unittest.skip("")
     def test_horizontal_line(self):
         """Tests that the function can handle a horizontal regression line that
         passes through the endpoints. This is a thick line test."""
@@ -112,15 +108,14 @@ class BasicUnitTests(unittest.TestCase):
             [30, 30],
             [40, 170],
             [50, 100],
-        ]).T
+        ])
         dominant_points = thick_polygonal_approximate(points, thickness)
 
         # Verify the output
         self.assertIsInstance(dominant_points, numpy.ndarray)
-        self.assertEqual(dominant_points.shape, (2, 4))
+        self.assertEqual(dominant_points.shape, points.shape)
         self.assertTrue(numpy.array_equal(dominant_points, points))
 
-    @unittest.skip("")
     def test_vertical_line(self):
         """Tests that the function can handle a vertical regression line that
         passes through the endpoints. This is a thick line test"""
@@ -132,15 +127,14 @@ class BasicUnitTests(unittest.TestCase):
             [30,  30],
             [170, 40],
             [100, 50],
-        ]).T
+        ])
         dominant_points = thick_polygonal_approximate(points, thickness)
 
         # Verify the output
         self.assertIsInstance(dominant_points, numpy.ndarray)
-        self.assertEqual(dominant_points.shape, (2, 4))
+        self.assertEqual(dominant_points.shape, points.shape)
         self.assertTrue(numpy.array_equal(dominant_points, points))
 
-    @unittest.skip("")
     def test_no_maximum(self):
         """Tests that the function can handle when there is no maximum point,
         but there is a minimum. This is a thick line test."""
@@ -151,15 +145,14 @@ class BasicUnitTests(unittest.TestCase):
             [20, 100],
             [30, 30],
             [40, 105],
-        ]).T
+        ])
         dominant_points = thick_polygonal_approximate(points, thickness)
 
         # Verify the output
         self.assertIsInstance(dominant_points, numpy.ndarray)
-        self.assertEqual(dominant_points.shape, (2, 3))
+        self.assertEqual(dominant_points.shape, points.shape)
         self.assertTrue(numpy.array_equal(dominant_points, points))
 
-    @unittest.skip("")
     def test_no_minimum(self):
         """Tests that the function can handle when there is no minimum point,
         but there is a maximum."""
@@ -170,12 +163,12 @@ class BasicUnitTests(unittest.TestCase):
             [20, 100],
             [30, 170],
             [40, 105],
-        ]).T
+        ])
         dominant_points = thick_polygonal_approximate(points, thickness)
 
         # Verify the output
         self.assertIsInstance(dominant_points, numpy.ndarray)
-        self.assertEqual(dominant_points.shape, (2, 3))
+        self.assertEqual(dominant_points.shape, points.shape)
         self.assertTrue(numpy.array_equal(dominant_points, points))
 
     def test_large_point_set(self):
@@ -193,7 +186,7 @@ class BasicUnitTests(unittest.TestCase):
         circle_lower_ys = -numpy.sqrt(radius ** 2 - circle_lower_xs ** 2)
         circle_ys = numpy.concatenate([circle_upper_ys, circle_lower_ys])
         circle_xs = numpy.concatenate([circle_upper_xs, circle_lower_xs])
-        points = (numpy.column_stack([circle_xs, circle_ys]) + centerpoint).T
+        points = numpy.column_stack([circle_xs, circle_ys]) + centerpoint
 
         # The thickness used, and the polygonal function call
         thickness = 0.01 * radius
@@ -201,17 +194,17 @@ class BasicUnitTests(unittest.TestCase):
 
         # Verify the format of the output
         self.assertIsInstance(dominant_points, numpy.ndarray)
-        self.assertEqual(dominant_points.shape[0], 2)
+        self.assertEqual(dominant_points.shape[1], 2)
 
         # Compare the original area to the new area, and the reduction in the
         # number of vertices.
-        (_, original_vertices) = points.shape
-        (_, new_vertices) = dominant_points.shape
+        (original_vertices, _) = points.shape
+        (new_vertices, _) = dominant_points.shape
         original_area = self._compute_area(points)
         new_area = self._compute_area(dominant_points)
         area_diff = (new_area - original_area) / original_area * 100
-        vertex_diff = ((dominant_points.shape[1] - points.shape[1]) /
-                points.shape[1]) * 100
+        vertex_diff = ((new_vertices - original_vertices) /
+                original_vertices * 100)
 
         # Report the results to the user
         print("\nLarge Point Set Test Results:")
@@ -226,10 +219,10 @@ class BasicUnitTests(unittest.TestCase):
 
         # If specified on the command line, show the plot
         if BasicUnitTests.LARGE_POINT_SET_SHOW_PLOT:
-            pyplot.plot(points[0, :], points[1, :], 'r', color='r',
-                    label='Original Polygon')
-            pyplot.plot(dominant_points[0, :], dominant_points[1, :], 'r',
-                    color='b', label='Approximated Polygon')
+            pyplot.plot(points[:, 0], points[:, 1], 'r', color='r',
+                    label='Original Polygon', linewidth=5)
+            pyplot.plot(dominant_points[:, 0], dominant_points[:, 1], 'r',
+                    color='b', label='Approximated Polygon', linewidth=3)
             pyplot.legend()
             pyplot.show()
 
@@ -237,8 +230,8 @@ class BasicUnitTests(unittest.TestCase):
         """Computes the area of the polygon given by the specified points."""
 
         # Put each pair of vertices into a matrix, and stack them
-        points_shifted = numpy.roll(points, -1, axis=1)
-        vertex_pairs = numpy.stack([points.T, points_shifted.T], axis=2)
+        points_shifted = numpy.roll(points, -1, axis=0)
+        vertex_pairs = numpy.stack([points, points_shifted], axis=2)
 
         # The signed area of the polygon is half of the sum of the determinants
         # of the vertex pairs.

@@ -148,7 +148,7 @@ def approximate_contour(args, dir_path, image_name, image):
     # Calculate the thickness parameter and approximate the contour.
     (height, width) = gray_image.shape
     thickness = min(height, width) * args.thickness
-    approx_contour = thick_polygonal_approximate(contour.T, thickness).T
+    approx_contour = thick_polygonal_approximate(contour, thickness)
 
     # Create the subdirectory in the output directory if it doesn't exist
     subdir_path = path.relpath(dir_path, args.data_dir)
