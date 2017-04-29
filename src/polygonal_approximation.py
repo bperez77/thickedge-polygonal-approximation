@@ -77,7 +77,7 @@ def compare_polygons(points1, points2):
     # Compute the fractional difference in vertices and area
     (num_vertices1, _) = points1.shape
     (num_vertices2, _) = points2.shape
-    vertex_diff = (num_vertices2 - num_vertices1) / num_vertices1
+    vertex_diff = (num_vertices2 - num_vertices1) / float(num_vertices1)
     area_diff = (area2 - area1) / area1
 
     return (area1, area2, vertex_diff, area_diff)

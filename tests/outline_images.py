@@ -238,8 +238,8 @@ def main():
     # Save the statistics out to file as a csv
     statistics_file_path = path.join(args.output_dir, 'statistics.csv')
     csv_header = ("Image", "Polygon Vertices", "Approximated Vertices",
-            "Polygon Area", "Approximated Area", "Vertex Difference",
-            "Area Difference")
+            "Polygon Area", "Approximated Area", "Vertex Difference (%)",
+            "Area Difference (%)")
     with open(statistics_file_path, 'w') as csv_file:
         csv_writer = csv.writer(csv_file)
         csv_writer.writerow(csv_header)
