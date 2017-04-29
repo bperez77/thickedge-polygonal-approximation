@@ -132,7 +132,11 @@ def overlay_polygon(image, polygon, image_name, polygon_name, output_dir):
     if polygon_name == "approx":
         pyplot.plot(polygon_closed[:, 0], polygon_closed[:, 1], 'o', color='b',
                 markersize=5)
+
+    # Trim all of the unnecessary whitespace from the plot
     pyplot.axis('off')
+    figure.axes[0].xaxis.set_major_locator(pyplot.NullLocator())
+    figure.axes[0].yaxis.set_major_locator(pyplot.NullLocator())
 
     # Save the figure to the specified output location, then return the figure
     (name, extension) = path.splitext(image_name)
