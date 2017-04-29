@@ -1,0 +1,3 @@
+[submodule "bgslibrary"]
+	path = bgslibrary
+	url = https://github.com/andrewssobral/bgslibrary
