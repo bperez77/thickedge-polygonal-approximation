@@ -52,6 +52,36 @@ def thick_polygonal_approximate(points, thickness):
     dominant_points_dict = _polyline_approx(points, thickness)
     return numpy.array(list(dominant_points_dict.keys()))
 
+def compare_polygons(points1, points2):
+    """Given two arrays of points defined two polygons, or closed polylines,
+    this computes the difference in vertices and area between the polygons.
+
+    Args:
+        points1 (numpy.ndarray): An Nx2 matrix of points that define the first
+                polygon to compare.
+        points2 (numpy.ndarray): An Mx2 matrix of points that define the second
+                poylgon to compare.
+    Returns:
+        float: The area of the first polygon.
+        float: The area of the second polygon.
+        float: The fractional difference in vertices between the second and
+                first polygon.
+        float: The fraction difference in area between the second and first
+                polygon.
+    """
+
+    # Compute the areas of the two polygons
+    area1 = _compute_area(points1)
+    area2 = _compute_area(points2)
+
+    # Compute the fractional difference in vertices and area
+    (num_vertices1, _) = points1.shape
+    (num_vertices2, _) = points2.shape
+    vertex_diff = (num_vertices2 - num_vertices1) / num_vertices1
+    area_diff = (area2 - area1) / area1
+
+    return (area1, area2, vertex_diff, area_diff)
+
 #-------------------------------------------------------------------------------
 # Helper Functions
 #-------------------------------------------------------------------------------
@@ -183,3 +213,15 @@ def _partition_points(points, below_extremum_index, above_extremum_index):
             points[above_extremum_index:below_extremum_index+1, :],
             points[below_extremum_index:, :],
         )
+
+def _compute_area(points):
+    """Computes the area of the polygon given by the specified points."""
+
+    # Put each pair of vertices into a matrix, and stack them
+    points_shifted = numpy.roll(points, -1, axis=0)
+    vertex_pairs = numpy.stack([points, points_shifted], axis=2)
+
+    # The signed area of the polygon is half of the absolute value of the sum of
+    # the determinants of the vertex pairs.
+    vertex_areas = numpy.linalg.det(vertex_pairs)
+    return 1 / 2.0 * abs(numpy.sum(vertex_areas))

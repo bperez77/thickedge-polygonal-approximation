@@ -25,6 +25,7 @@ sys.path.append(os.path.realpath(os.path.join(os.path.dirname(__file__), '..',
 
 # Local Imports
 from polygonal_approximation import thick_polygonal_approximate
+from polygonal_approximation import compare_polygons
 
 #-------------------------------------------------------------------------------
 # Basic Unit Tests
@@ -198,24 +199,19 @@ class BasicUnitTests(unittest.TestCase):
 
         # Compare the original area to the new area, and the reduction in the
         # number of vertices.
-        (original_vertices, _) = points.shape
-        (new_vertices, _) = dominant_points.shape
-        original_area = self._compute_area(points)
-        new_area = self._compute_area(dominant_points)
-        area_diff = (new_area - original_area) / original_area * 100
-        vertex_diff = ((new_vertices - original_vertices) /
-                original_vertices * 100)
+        (vertices, _) = points.shape
+        (dominant_vertices, _) = dominant_points.shape
+        (area, dominant_area, vertex_diff, area_diff) = compare_polygons(points,
+                dominant_points)
 
         # Report the results to the user
         print("\nLarge Point Set Test Results:")
-        print("\tOriginal Polygon Vertices:     {:<10}".format(
-                original_vertices))
-        print("\tOriginal Polygon Area:         {:<10.3f}".format(
-                original_area))
+        print("\tPolygon Vertices:              {:<10}".format(vertices))
+        print("\tPolygon Area:                  {:<10.3f}".format(area))
         print("\tApproximated Polygon Vertices: {:<10} ({:0.3f}%)".format(
-                new_vertices, vertex_diff))
+                dominant_vertices, vertex_diff * 100))
         print("\tApproximated Polygon Area:     {:<10.3f} ({:0.3f}%)".format(
-                new_area, area_diff))
+                dominant_area, area_diff * 100))
 
         # If specified on the command line, show the plot
         if BasicUnitTests.LARGE_POINT_SET_SHOW_PLOT:
@@ -225,18 +221,6 @@ class BasicUnitTests(unittest.TestCase):
                     color='b', label='Approximated Polygon', linewidth=3)
             pyplot.legend()
             pyplot.show()
-
-    def _compute_area(self, points):
-        """Computes the area of the polygon given by the specified points."""
-
-        # Put each pair of vertices into a matrix, and stack them
-        points_shifted = numpy.roll(points, -1, axis=0)
-        vertex_pairs = numpy.stack([points, points_shifted], axis=2)
-
-        # The signed area of the polygon is half of the sum of the determinants
-        # of the vertex pairs.
-        vertex_areas = numpy.linalg.det(vertex_pairs)
-        return 1 / 2.0 * abs(numpy.sum(vertex_areas))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
