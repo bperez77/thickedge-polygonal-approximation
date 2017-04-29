@@ -28,6 +28,9 @@
 !*.png
 !*.jpg
 
+# Ignore the directory where the results typically go
+/results
+
 # Allow for Latex and XML files
 !*.xml
 !*.tex
