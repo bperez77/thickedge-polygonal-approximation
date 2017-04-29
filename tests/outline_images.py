@@ -31,6 +31,7 @@ An example dataset that has this format is the MPEG-7 Shape Test Set:
 import sys
 from os import walk, path, access, makedirs, R_OK
 from argparse import ArgumentParser
+import csv
 
 # Vision Imports
 import numpy
@@ -179,7 +180,8 @@ def approximate_polygon(args, dir_path, image_name, image):
             approx_polygon)
 
     # Report the statistics to the user
-    print("\nImage {} Statistics:".format(path.join(args.data_dir, image_name)))
+    image_path = path.join(subdir_path, image_name)
+    print("\nImage {} Statistics:".format(image_path))
     print("\tPolygon Vertices:              {:<10}".format(vertices))
     print("\tPolygon Area:                  {:<10.3f}".format(area))
     print("\tApproximated Polygon Vertices: {:<10} ({:0.3f}%)".format(
@@ -200,8 +202,8 @@ def approximate_polygon(args, dir_path, image_name, image):
     pyplot.close(polygon_figure)
     pyplot.close(approx_figure)
 
-    return (vertices, approx_vertices, area, approx_area, vertex_diff,
-            area_diff)
+    return (image_path, vertices, approx_vertices, area, approx_area,
+            vertex_diff * 100, area_diff * 100)
 
 def main():
     """The main function for the script."""
@@ -233,6 +235,26 @@ def main():
                         "shape.".format(image_path))
                 continue
             statistics.append(stats)
+
+    # Save the statistics out to file as a csv
+    statistics_file_path = path.join(args.output_dir, 'statistics.csv')
+    csv_header = ("Image", "Polygon Vertices", "Approximated Vertices",
+            "Polygon Area", "Approximated Area", "Vertex Difference",
+            "Area Difference")
+    with open(statistics_file_path, 'w') as csv_file:
+        csv_writer = csv.writer(csv_file)
+        csv_writer.writerow(csv_header)
+        csv_writer.writerows(statistics)
+
+    # Report the average vertex and area reduction
+    vertex_diffs = [v for (_, _, _, _, _, v, _) in statistics]
+    area_diffs = [abs(a) for (_, _, _, _, _, _, a) in statistics]
+    print("\n\n--------------------------------------------------------------")
+    print("Overall Statistics:")
+    print("\tAverage Vertex Reduction: {:0.3f}%".format(
+            sum(vertex_diffs) / len(vertex_diffs)))
+    print("\tAverage Area Difference: {:0.3f}%".format(
+            sum(area_diffs) / len(area_diffs)))
 
 if __name__ == '__main__':
     main()
