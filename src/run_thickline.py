@@ -37,8 +37,8 @@ def main():
         flag, frame = capture.read()
         pos_frame = capture.get(cv2.cv.CV_CAP_PROP_POS_FRAMES)
 
-        if len(thick_polygons[i]) > 0:
-            cv2.polylines(frame, np.int32([thick_polygons[i][0]]), True, (10,150,220), thickness=thickness)
+        for thick_poly in thick_polygons[i]:
+            cv2.polylines(frame, np.int32([thick_poly]), True, (180,40,100), thickness=thickness/2)
 
         cv2.imshow(video_file, frame)
 

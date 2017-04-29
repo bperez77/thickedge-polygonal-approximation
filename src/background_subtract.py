@@ -41,7 +41,7 @@ import libbgs
 bgs = libbgs.LBMixtureOfGaussians() #libbgs.FrameDifference()
 
 # Display intermediate images for debugging
-debug = 0
+debug = 1
 
 
 #------------------------------------------------------------------------------
@@ -158,10 +158,20 @@ def _process_frame(frame):
 
     # Post process video for clearer mask
     # None for kernel uses default 3x3 gaussian kernel
-    img_post = cv2.erode(img_output, None)
+    img_post = cv2.dilate(img_output, None, iterations=1)
+    img_post = cv2.erode(img_post, None, iterations=3)
     img_post = cv2.dilate(img_post, None, iterations=10)
     img_post = cv2.erode(img_post, None, iterations=8)
+
+    # Handle the edge condition
+    img_post = img_post.T[0]
+    img_post[0] = 0
+    img_post[img_post.shape[0]-1] = 0
+    img_post = img_post.T
+    img_post[0] = 0
+    img_post[img_post.shape[0]-1] = 0
     
+
     # Canny edge detector to find all objects
     edges = cv2.Canny(img_post, 1000, 3000, apertureSize=5)
     edges = cv2.dilate(edges, None, iterations=1)
