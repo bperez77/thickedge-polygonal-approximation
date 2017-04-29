@@ -179,7 +179,7 @@ def approximate_polygon(args, dir_path, image_name, image):
             approx_polygon)
 
     # Report the statistics to the user
-    print("\nImage {} Statistics:".format(subdir_path))
+    print("\nImage {} Statistics:".format(path.join(args.data_dir, image_name)))
     print("\tPolygon Vertices:              {:<10}".format(vertices))
     print("\tPolygon Area:                  {:<10.3f}".format(area))
     print("\tApproximated Polygon Vertices: {:<10} ({:0.3f}%)".format(
@@ -199,6 +199,9 @@ def approximate_polygon(args, dir_path, image_name, image):
         pyplot.show()
     pyplot.close(polygon_figure)
     pyplot.close(approx_figure)
+
+    return (vertices, approx_vertices, area, approx_area, vertex_diff,
+            area_diff)
 
 def main():
     """The main function for the script."""
@@ -226,7 +229,8 @@ def main():
             # Process the image, and save its results to file
             stats = approximate_polygon(args, dir_path, file_name, image)
             if stats is None:
-                print("Warning: {}: Image does not have precisely one shape.")
+                print("Warning: {}: Image does not have precisely one "
+                        "shape.".format(image_path))
                 continue
             statistics.append(stats)
 
