@@ -18,7 +18,6 @@
 !*.hpp
 
 # Allow for the background subtraction library
-!/src/libbgs.so
 !/bgslibrary
 
 # Allow for Makefiles
