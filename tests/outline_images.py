@@ -12,14 +12,14 @@ This file contains a script for running polygonal approximation on a series of
 binary images.
 
 The script expects a directory of binary images that contain a single shape. The
-script goes through images one at a time, traces the contour around the single
-shape, then runs polygonal approximation. The image with contour overlaid and
-another with the image with the approximated contour are then saved to the
+script goes through images one at a time, traces the polygon around the single
+shape, then runs polygonal approximation. The image with polygon overlaid and
+another with the image with the approximated polygon are then saved to the
 output directory. In addition, statistics for each image are saved to a text
 file.
 
-The contour image will have the name `filename_contour.ext`, while the
-approximated contour image will have the name `filename_approx.ext`. At the top
+The polygon image will have the name `filename_polygon.ext`, while the
+approximated polygon image will have the name `filename_approx.ext`. At the top
 level of the output directory will be a `statistics.txt` file, containing the
 stats for each image.
 
@@ -42,6 +42,7 @@ sys.path.append(path.realpath(path.join(path.dirname(__file__), '..', 'src')))
 
 # Local Imports
 from polygonal_approximation import thick_polygonal_approximate
+from polygonal_approximation import compare_polygons
 
 #-------------------------------------------------------------------------------
 # Internal Parameters
@@ -62,8 +63,8 @@ def parse_arguments():
     # Setup the command line options
     parser = ArgumentParser(description="Runs thick-edge polygonal "
             "on the specified set of binary shape images and saves the "
-            "the image with the contour overlaid and another with the "
-            "approximated contour overlaid to file.")
+            "the image with the polygon overlaid and another with the "
+            "approximated polygon overlaid to file.")
     parser.add_argument("-d", "--data-dir", dest="data_dir", required=True,
             help="The path to the directory containing the data to process.")
     parser.add_argument("-o", "--output-dir", dest="output_dir", required=True,
@@ -116,26 +117,37 @@ def sanity_check(args):
 # Main Application
 #-------------------------------------------------------------------------------
 
-def overlay_contour(image, contour, approx):
-    """Overlays the given contour on the image, plotting its points and the line
-    representing it."""
+def overlay_polygon(image, polygon, image_name, polygon_name, output_dir):
+    """Overlays the given polygon on the image, plotting the line and
+    potentially the points. This is then saved the specified output
+    directory. The figure is returned."""
 
-    # Force the contour to be closed
-    contour_closed = numpy.append(contour, contour[0:1, :], axis=0)
+    # Force the polygon to be closed
+    polygon_closed = numpy.append(polygon, polygon[0:1, :], axis=0)
 
+    # Plot the polygon over the image
+    figure = pyplot.figure()
     pyplot.imshow(image)
-    pyplot.plot(contour_closed[:, 0], contour_closed[:, 1], 'r', color='r')
-    if approx:
-        pyplot.plot(contour_closed[:, 0], contour_closed[:, 1], 'o', color='b',
+    pyplot.plot(polygon_closed[:, 0], polygon_closed[:, 1], 'r', color='r')
+    if polygon_name == "approx":
+        pyplot.plot(polygon_closed[:, 0], polygon_closed[:, 1], 'o', color='b',
                 markersize=5)
     pyplot.axis('off')
 
-def approximate_contour(args, dir_path, image_name, image):
-    """Traces the contour of the shape in the image, then approximates it with
-    thick-edge approximation. The two contours are overlaid on the original
-    image and saved to file"""
+    # Save the figure to the specified output location, then return the figure
+    (name, extension) = path.splitext(image_name)
+    polygon_file = "{}_{}{}".format(name, polygon_name, extension)
+    polygon_path = path.join(output_dir, polygon_file)
+    pyplot.savefig(polygon_path, bbox_inches='tight', pad_inches=0)
 
-    # Find the contours in the image, and verify there is only one.
+    return figure
+
+def approximate_polygon(args, dir_path, image_name, image):
+    """Traces the polygon of the shape in the image, then approximates it with
+    thick-edge approximation. The two polygons are overlaid on the original
+    image and saved to file. Stats the polygons are returned."""
+
+    # Find the polygons in the image, and verify there is only one.
     # FIXME: FindContours should only return two parameters
     gray_image = cv2.cvtColor(image, code=cv2.COLOR_BGR2GRAY)
     (_, contours, _) = cv2.findContours(gray_image, cv2.RETR_EXTERNAL,
@@ -143,12 +155,12 @@ def approximate_contour(args, dir_path, image_name, image):
     if len(contours) != 1:
         return None
     (num_points, _, num_dim) = contours[0].shape
-    contour = numpy.reshape(contours[0], [num_points, num_dim])
+    polygon = numpy.reshape(contours[0], [num_points, num_dim])
 
-    # Calculate the thickness parameter and approximate the contour.
+    # Calculate the thickness parameter and approximate the polygon.
     (height, width) = gray_image.shape
     thickness = min(height, width) * args.thickness
-    approx_contour = thick_polygonal_approximate(contour, thickness)
+    approx_polygon = thick_polygonal_approximate(polygon, thickness)
 
     # Create the subdirectory in the output directory if it doesn't exist
     subdir_path = path.relpath(dir_path, args.data_dir)
@@ -156,26 +168,33 @@ def approximate_contour(args, dir_path, image_name, image):
     if not path.exists(output_subdir_path):
         makedirs(output_subdir_path)
 
-    # Save the image with the original contour overlaid
-    (name, extension) = path.splitext(image_name)
-    contour_name = "{}_{}{}".format(name, "contour", extension)
-    pyplot.figure(0)
-    overlay_contour(image, contour, False)
-    pyplot.savefig(path.join(output_subdir_path, contour_name),
-            bbox_inches='tight')
+    # Compare the polygons represented by the two polygons
+    (vertices, _) = polygon.shape
+    (approx_vertices, _) = approx_polygon.shape
+    (area, approx_area, vertex_diff, area_diff) = compare_polygons(polygon,
+            approx_polygon)
 
-    # Save the image with the approximated contour overlaid
-    approx_name = "{}_{}{}".format(name, "approx", extension)
-    pyplot.figure(1)
-    overlay_contour(image, approx_contour, True)
-    pyplot.savefig(path.join(output_subdir_path, approx_name),
-            bbox_inches='tight')
+    # Report the statistics to the user
+    print("\nImage {} Statistics:".format(subdir_path))
+    print("\tPolygon Vertices:              {:<10}".format(vertices))
+    print("\tPolygon Area:                  {:<10.3f}".format(area))
+    print("\tApproximated Polygon Vertices: {:<10} ({:0.3f}%)".format(
+            approx_vertices, vertex_diff * 100))
+    print("\tApproximated Polygon Area:     {:<10.3f} ({:0.3f}%)".format(
+            approx_area, area_diff * 100))
+
+    # Create figures for and save the image with the original and approximated
+    # polygons overlaid.
+    polygon_figure = overlay_polygon(image, polygon, image_name, "polygon",
+            args.output_dir)
+    approx_figure = overlay_polygon(image, approx_polygon, image_name, "approx",
+            args.output_dir)
 
     # If specified by user, show each plot, then close the plots
     if args.show_images:
         pyplot.show()
-    pyplot.close(0)
-    pyplot.close(1)
+    pyplot.close(polygon_figure)
+    pyplot.close(approx_figure)
 
 def main():
     """The main function for the script."""
@@ -189,7 +208,7 @@ def main():
         makedirs(args.output_dir)
 
     # Iterate over each image in the output directory, and process it
-    #statistics = list()
+    statistics = list()
     for (dir_path, _, file_names) in walk(args.data_dir):
         for file_name in file_names:
             # Attempt to read the file as an image
@@ -201,8 +220,11 @@ def main():
                 continue
 
             # Process the image, and save its results to file
-            print("Processing {}...".format(image_path))
-            approximate_contour(args, dir_path, file_name, image)
+            stats = approximate_polygon(args, dir_path, file_name, image)
+            if stats is None:
+                print("Warning: {}: Image does not have precisely one shape.")
+                continue
+            statistics.append(stats)
 
 if __name__ == '__main__':
     main()
