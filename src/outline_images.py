@@ -28,7 +28,6 @@ An example dataset that has this format is the MPEG-7 Shape Test Set:
 """
 
 # General Imports
-import sys
 from os import walk, path, access, makedirs, R_OK
 from argparse import ArgumentParser
 import csv
@@ -37,9 +36,6 @@ import csv
 import numpy
 import cv2
 from matplotlib import pyplot
-
-# Add the src directory to the PYTHONPATH
-sys.path.append(path.realpath(path.join(path.dirname(__file__), '..', 'src')))
 
 # Local Imports
 from polygonal_approximation import thick_polygonal_approximate
