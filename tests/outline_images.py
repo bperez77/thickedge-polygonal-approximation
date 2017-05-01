@@ -52,7 +52,7 @@ from polygonal_approximation import compare_polygons
 # The default thickness used for the thick-edge polygonal approximation
 # algorithm. This is a percentage of the minimum image dimension (max of width
 # and height).
-DEFAULT_THICKNESS = 0.01
+DEFAULT_THICKNESS = 0.03
 
 #-------------------------------------------------------------------------------
 # Command-Line Parsing and Sanity Checks
@@ -118,7 +118,8 @@ def sanity_check(args):
 # Main Application
 #-------------------------------------------------------------------------------
 
-def overlay_polygon(image, polygon, image_name, polygon_name, output_dir):
+def overlay_polygon(image, polygon, thickness, image_name, polygon_name,
+        output_dir):
     """Overlays the given polygon on the image, plotting the line and
     potentially the points. This is then saved the specified output
     directory. The figure is returned."""
@@ -129,10 +130,13 @@ def overlay_polygon(image, polygon, image_name, polygon_name, output_dir):
     # Plot the polygon over the image
     figure = pyplot.figure()
     pyplot.imshow(image)
-    pyplot.plot(polygon_closed[:, 0], polygon_closed[:, 1], 'r', color='r')
-    if polygon_name == "approx":
+    if polygon_name == "polygon":
+        pyplot.plot(polygon_closed[:, 0], polygon_closed[:, 1], 'r', color='r')
+    else:
+        pyplot.plot(polygon_closed[:, 0], polygon_closed[:, 1], 'r', color='r',
+                linewidth=thickness)
         pyplot.plot(polygon_closed[:, 0], polygon_closed[:, 1], 'o', color='b',
-                markersize=3)
+                markersize=thickness+3)
 
     # Trim all of the unnecessary whitespace from the plot
     pyplot.axis('off')
@@ -190,10 +194,10 @@ def approximate_polygon(args, dir_path, image_name, image):
 
     # Create figures for and save the image with the original and approximated
     # polygons overlaid.
-    polygon_figure = overlay_polygon(image, polygon, image_name, "polygon",
-            args.output_dir)
-    approx_figure = overlay_polygon(image, approx_polygon, image_name, "approx",
-            args.output_dir)
+    polygon_figure = overlay_polygon(image, polygon, thickness, image_name,
+            "polygon", args.output_dir)
+    approx_figure = overlay_polygon(image, approx_polygon, thickness,
+            image_name, "approx", args.output_dir)
 
     # If specified by user, show each plot, then close the plots
     if args.show_images:
