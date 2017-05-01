@@ -102,10 +102,10 @@ def main():
         cv2.polylines(frame, thick_polygons, isClosed=True,
                 color=(180, 40, 100), thickness=int(round(args.thickness/2)))
 
-        # Show the frame with the polygons overlaid. If the user presses any
+        # Show the frame with the polygons overlaid. If the user presses the 's'
         # key, save the current frame to file.
         cv2.imshow(args.video_file, frame)
-        if cv2.waitKey(50) > 0:
+        if chr(cv2.waitKey(50) & 0xFF) == 's':
             print("Saving file...")
             cv2.imwrite("{}_{}.png".format(video_name, i), frame)
 
