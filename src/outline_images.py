@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#! /usr/bin/env python2
 
 """
 outline_images.py
@@ -81,13 +81,7 @@ def parse_arguments():
             "image and pause the script. The script continues when the window "
             "is closed.")
 
-    # Parse the arguments, check the thickness is valid
-    args = parser.parse_args()
-    if args.thickness >= 1.0:
-        print("Error: Thickness must be less than 1.0.")
-        exit(1)
-
-    return args
+    return parser.parse_args()
 
 def sanity_check(args):
     """Runs a basic sanity check on the arguments specified by the user."""
@@ -96,7 +90,10 @@ def sanity_check(args):
     msg_template = "Error: {}: {}"
     msg = ""
 
-    if not path.exists(args.data_dir):
+    # Check that the thickness, data directory, and output directory are valid.
+    if args.thickness <= 0 or args.thickness >= 1.0:
+        msg = "Error: Thickness must be positive and less than 1.0"
+    elif not path.exists(args.data_dir):
         msg = msg_template.format(args.data_dir, "Data directory does not "
                 "exist.")
     elif not path.isdir(args.data_dir):
