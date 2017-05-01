@@ -1,7 +1,7 @@
 #! /usr/bin/env python2
 
 """
-run_thickline.py
+run_thickedge.py
 
 Brandon Perez (bmperez)
 Sohil Shah (sohils)
@@ -22,12 +22,11 @@ from os import path, access, R_OK
 from argparse import ArgumentParser
 
 # Vision Imports
-import numpy as np
 import cv2
 
 # Local Imports
 from polygonal_approximation import thick_polygonal_approximate
-from background_subtract import process_video, process_camera
+from background_subtract import process_frame
 
 #-------------------------------------------------------------------------------
 # Command-Line Parsing and Sanity Checks
@@ -83,22 +82,6 @@ def main():
     args = parse_arguments()
     sanity_check(args)
 
-    # Read out the frames from the video file, process them with background
-    # subtraction and extract the contour outline of the objects.
-    frames = process_video(args.video_file)
-
-    # For each frame, compute the polygonal approximation of the outlines.
-    frames_polygons = list()
-    for frame in frames:
-        polygons = list()
-        for polygon in frame:
-            # Reshape the polygon to the expected format, and approximate it
-            (num_points, _, num_dim) = polygon.shape
-            polygon_reshaped = np.reshape(polygon, [num_points, num_dim])
-            polygons.append(thick_polygonal_approximate(polygon_reshaped,
-                    args.thickness))
-        frames_polygons.append(polygons)
-
     # Open up the video file, for displaying the polygons overlaid on frames.
     capture = cv2.VideoCapture(args.video_file)
     if not capture.isOpened():
@@ -111,9 +94,12 @@ def main():
     # Iterate over each frame in the video, and overlay the polygons on each.
     num_frames = int(round(capture.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)))
     for i in range(num_frames):
-        # Read the next frame from the video, and overlay the polygons on it
-        (_, frame) = capture.read()
-        cv2.polylines(frame, frames_polygons[i], isClosed=True,
+        # Read the next frame, extract the polygons, approximate them with
+        # thick-edge, and then overlay them on the video frame.
+        (frame, polygons) = process_frame(capture, show_intermediate=False)
+        thick_polygons = [thick_polygonal_approximate(polygon, args.thickness)
+                for polygon in polygons]
+        cv2.polylines(frame, thick_polygons, isClosed=True,
                 color=(180, 40, 100), thickness=int(round(args.thickness/2)))
 
         # Show the frame with the polygons overlaid. If the user presses any

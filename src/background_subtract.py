@@ -12,7 +12,7 @@ or a file. The processing steps are as follows:
   - Use chosen background subtraction algorithm to get a forground
   - Erode the image to remove noise
   - Dilate the image to reduce holes in the moving object
-  - Use OpenCV edge detection to detect an outline of the binary 
+  - Use OpenCV edge detection to detect an outline of the binary
     image
   - Find connected components
   - Throw out outlines that are too small from noise
@@ -22,191 +22,121 @@ or a file. The processing steps are as follows:
 The background subtraction library used here can be found at:
 https://github.com/andrewssobral/bgslibrary
 
-Requirements: 
-  - libbgs requires that there is a folder named 'config' in the directory 
+Requirements:
+  - libbgs requires that there is a folder named 'config' in the directory
     it is run from
   - Requires python2
   - Requires OpenCV 2
 
 """
 
-
-import numpy as np
+# Vision Imports
+import numpy
 import cv2
+
+# Background subtraction library import.
 import libbgs
 
 # Choose here which algorithm to use for background subtraction
-# A list of algorithms is available at: 
+# A list of algorithms is available at:
 # https://github.com/andrewssobral/bgslibrary/wiki/List-of-available-algorithms
-bgs = libbgs.LBMixtureOfGaussians() #libbgs.FrameDifference()
-
-# Display intermediate images for debugging
-debug = 1
-
+BGS = libbgs.LBMixtureOfGaussians()
 
 #------------------------------------------------------------------------------
 # Public Interface
 #------------------------------------------------------------------------------
-def process_camera(camera_dev):
-    """
-    Reads frames from Camera one at a time as they are ready and
-    preprocesses them for polygons. 
+
+def process_frame(video_stream, show_intermediate=False):
+    """Reads the next frame from the video stream, detects all the moving
+    objects in the frame, and returns polygons representing their outlines.
+
+    If no frames are remaining in the video stream (end of a video file, or a
+    camera is disconnected), then this returns None.
 
     Args:
-        camera_dev (string): Filename of the camera device
+        video_stream cv2.VideoCapture): The VideoCapture object representing the
+            video stream (either a camera or video file), from which the next
+            frame is read.
+        show_intermediate (bool): Show the intermediate images after each step
+            of processing as OpenCV windows. The user must call `cv2.waitKey`
+            for the windows to be displayed. Optional, defaults to False.
 
     Returns:
-        list of numpy array lists: Each list represents one frame,
-                                   contains list of numpy array of
-                                   points. 
-                                   Eg. frames[0][0] is the first 
-                                   polygon of the first frame and
-                                   is a numpy array of points.
-
+        numpy.ndarray: A HxWxD array representing the next frame in the given
+                video stream. If no frames remain in the video stream, then None
+                is returned.
+        list (numpy.ndarray): A list of Nx2 matrices where each matrix defines
+                the points of an outline of one of the moving objects in the
+                frame. N is the number of points for a given outline. If no
+                frames remain in the video stream, then None is returned.
     """
-    frames = []
 
-    capture = cv2.VideoCapture(camera_dev)
-    while not capture.isOpened():
-        capture = cv2.VideoCapture(camera_dev)
-        cv2.waitKey(1000)
-        print "Waiting for Camera"
+    # Read the next frame from the camera. If no such frame is available, return
+    # None.
+    (valid, frame) = video_stream.read()
+    if not valid:
+        return (None, None)
 
-    pos_frame = capture.get(cv2.cv.CV_CAP_PROP_POS_FRAMES)
-    while True:
-        flag, frame = capture.read()
+    # Subtract the background from the frame to get the moving objects, and
+    # process it to get their edges.
+    (bgs_frame, postprocessed_frame, edge_frame) = _find_moving_edges(frame)
 
-        if flag:
-            pos_frame = capture.get(cv2.cv.CV_CAP_PROP_POS_FRAMES)
+    # If requested, show the intermediate processing steps as images.
+    if show_intermediate:
+        cv2.imshow('Video Frame', frame)
+        cv2.imshow('Background Subtracted Mask', bgs_frame)
+        cv2.imshow('Postprocessed Mask', postprocessed_frame)
+        cv2.imshow('Edges', edge_frame)
 
-            fg_edges = _process_frame(frame)
-            polys = find_polys(fg_edges)
-
-            frames.append(polys)
-
-        else:
-            capture.set(cv2.cv.CV_CAP_PROP_POS_FRAMES, pos_frame-1)
-            print "Frame is not ready"
-            cv2.waitKey(1000)
-
-        if cv2.waitKey(10) > 0:
-            break
-
-    if debug:
-        cv2.destroyAllWindows()
-
-    return frames
-
-def process_video(video_file):
-    """
-    Reads frames from a video file of any format and returns a list
-    of polygons for every frame. 
-
-    Args:
-        video_file (string): Filename of video file
-
-    Returns:
-        list of numpy array lists: Each list represents one frame,
-                                   contains list of numpy array of
-                                   points. 
-                                   Eg. frames[0][0] is the first 
-                                   polygon of the first frame and
-                                   is a numpy array of points.
-
-    """
-    frames = []
-
-    capture = cv2.VideoCapture(video_file)
-    if not capture.isOpened():
-        print("Could not open file: ", video_file)
-
-    pos_frame = capture.get(cv2.cv.CV_CAP_PROP_POS_FRAMES)
-    while True:
-        flag, frame = capture.read()
-        pos_frame = capture.get(cv2.cv.CV_CAP_PROP_POS_FRAMES)
-
-        fg_edges = _process_frame(frame)
-        polys = _find_polys(fg_edges)
-
-        frames.append(polys)
-
-        # End of video
-        if capture.get(cv2.cv.CV_CAP_PROP_POS_FRAMES) == capture.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT):
-            break
-
-    if debug:
-        cv2.destroyAllWindows()
-
-    return frames
-
+    # Find the outlines of the moving objects as polygons.
+    polygons = _find_polygons(edge_frame)
+    return (frame, polygons)
 
 #------------------------------------------------------------------------------
 # Helper Functions
 #------------------------------------------------------------------------------
-def _process_frame(frame):    
-    """
-    Using a frame, preprocesses with erode and dilate to remove noise and holes.
-    Then, uses Canny edge detector to detect polygonal edge.
 
-    Args:
-        frame (numpy array): frame image to preprocess
+def _find_moving_edges(image):
+    """Using background subtraction and various preprocessing steps, find the
+    edges of moving objects in the image."""
 
-    Returns:
-        edges (numpy array): binary image of edges
-    """
-    img_output = bgs.apply(frame)
+    # Apply background subtraction to get a mask for moving objects.
+    bgs_image = BGS.apply(image)
 
-    # Post process video for clearer mask
-    # None for kernel uses default 3x3 gaussian kernel
-    img_post = cv2.dilate(img_output, None, iterations=1)
-    img_post = cv2.erode(img_post, None, iterations=3)
-    img_post = cv2.dilate(img_post, None, iterations=10)
-    img_post = cv2.erode(img_post, None, iterations=8)
+    # Process the mask to fill in holes and generally smooth it out, leading to
+    # a better result. Note that None indicates to use a 3x3 Gaussian kernel.
+    dilated_image = cv2.dilate(bgs_image, kernel=None, iterations=1)
+    eroded_image = cv2.erode(dilated_image, kernel=None, iterations=3)
+    dilated2_image = cv2.dilate(eroded_image, kernel=None, iterations=10)
+    postprocessed_image = cv2.erode(dilated2_image, kernel=None, iterations=8)
 
-    # Handle the edge condition
-    img_post = img_post.T[0]
-    img_post[0] = 0
-    img_post[img_post.shape[0]-1] = 0
-    img_post = img_post.T
-    img_post[0] = 0
-    img_post[img_post.shape[0]-1] = 0
-    
+    # Zero out any edges that are on the border of the image. This prevents the
+    # `findCountours` from creating a polygon that traces both sides of edges.
+    postprocessed_image[0, :] = 0
+    postprocessed_image[-1, :] = 0
+    postprocessed_image[:, 0] = 0
+    postprocessed_image[:, -1] = 0
 
-    # Canny edge detector to find all objects
-    edges = cv2.Canny(img_post, 1000, 3000, apertureSize=5)
-    edges = cv2.dilate(edges, None, iterations=1)
-    
+    # Use a Canny edge detector to find the edges of all the objects, and smooth
+    # it out with a dilation.
+    canny_image = cv2.Canny(postprocessed_image, threshold1=1000,
+            threshold2=3000, apertureSize=5)
+    edge_image = cv2.dilate(canny_image, kernel=None, iterations=1)
 
-    if debug:
-        cv2.imshow('video', frame)
-        cv2.imshow('img_output', img_output)
-        cv2.imshow('img_mask', img_post)
-        cv2.imshow('edges', edges)
+    return (bgs_image, postprocessed_image, edge_image)
 
-        # Pause 50ms between frames
-        if cv2.waitKey(50) > 0:
-            print('Saving images...')
-            cv2.imwrite('original.png', frame)            
-            cv2.imwrite('backsub.png', img_output)            
-            cv2.imwrite('mask.png', img_post)      
-            cv2.imwrite('edges.png', edges)            
+def _find_polygons(edge_image):
+    """Given a binary image of edges, find the polygons representing the
+    outlines of all the objects in the image. The polygons are represented as
+    ordered list of points (Nx2 matrix)."""
 
-    return edges
+    # Find the contours (outlines) in the image.
+    (contours, _) = cv2.findContours(edge_image, mode=cv2.RETR_EXTERNAL,
+            method=cv2.CHAIN_APPROX_SIMPLE)
 
-def _find_polys(edges):
-    """
-    Using the edges image, finds polygons and represents as ordered list of points.
-
-    Args:
-        edges (numpy array): binary image of edges
-
-    Returns:
-        contours (list of numpy arrays): list of polygons as arrays of points
-    """
-
-    # Turns out this just does everything we need
-    contours, hierarchy = cv2.findContours(edges, cv2.RETR_EXTERNAL,
-                                           cv2.CHAIN_APPROX_SIMPLE)
-    return contours
-    
-
+    # Reshape each contour to be an Nx2 image.
+    reshaped_contours = [None for i in range(len(contours))]
+    for i in range(len(contours)):
+        (num_points, _, num_dim) = contours[i].shape
+        reshaped_contours[i] = numpy.reshape(contours[i], [num_points, num_dim])
+    return reshaped_contours
