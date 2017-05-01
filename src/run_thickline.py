@@ -1,57 +1,137 @@
 #! /usr/bin/env python2
 
+"""
+run_thickline.py
+
+Brandon Perez (bmperez)
+Sohil Shah (sohils)
+
+Friday, April 28, 2017 at 12:40:48 PM EDT
+
+This file contains the main application for running the polygonal thick-edge
+approximation.
+
+This applications allows for the polygonal thick-edge approximation to be run
+either on an offline video, or online in real-time on a webcam video. In either
+case, the application uses the background subtraction library to get all the
+moving objects in each frame. Then, using this, a contour is traced around each
+object, the polygonal thick-edge approximation is run, and then this is overlaid
+on the video.
+"""
+
+# General Imports
+from os import path, access, R_OK
+from argparse import ArgumentParser
+
+# Vision Imports
 import numpy as np
-import sys
 import cv2
+
+# Local Imports
 from polygonal_approximation import thick_polygonal_approximate
 from background_subtract import process_video, process_camera
 
-def main():
-    if len(sys.argv) < 3:
-        print 'usage: %s <video_file> <thickness>' % sys.argv[0]
+#-------------------------------------------------------------------------------
+# Command-Line Parsing and Sanity Checks
+#-------------------------------------------------------------------------------
+
+def parse_arguments():
+    """Parses the arguments specified by the user on the command line."""
+
+    # Setup the command line options
+    parser = ArgumentParser(description="Runs background subtraction, followed "
+            "by thick-edge polygonal approximation on all moving objects in "
+            "the scene. This can be either run offline on a video file, or "
+            "online on a video input from a webcam.")
+    parser.add_argument("-f", "--video-file", dest="video_file", type=str,
+            required=True, help="The path to the video on which to run the "
+            "thick-edge polygonal approximation pipeline.")
+    parser.add_argument("-t", "--thickness", dest="thickness", type=float,
+            required=True, help="The thickness parameter to use for the "
+            "thick-edge polygonal approximation algorithm.")
+
+    # Parse the arguments, check that the thickness is valid
+    args = parser.parse_args()
+    if args.thickness < 0:
+        print("Error: Thickness must be positive.")
         exit(1)
 
-    video_file = sys.argv[1]
-    thickness = int(sys.argv[2])
+    return args
 
-    thick_polygons = []
-    frames = process_video(video_file)
+def sanity_check(args):
+    """Runs a basic sanity check on the arguments specified by the user."""
 
-    i = 0
+    # Template for the error message
+    msg_template = "Error: {}: {}"
+    msg = ""
+
+    if args.thickness <= 0:
+        msg = "Error: Thickness must be positive."
+    elif not path.exists(args.video_file):
+        msg = msg_template.format(args.video_file, "Video file does not exist.")
+    elif not path.isfile(args.video_file):
+        msg = msg_template.format(args.video_file, "Video file is not a file.")
+    elif not access(args.video_file, R_OK):
+        msg = msg_template.format(args.video_file, "Video file lacks read "
+                "permissions")
+    else:
+        return
+
+    print(msg)
+    exit(1)
+
+#-------------------------------------------------------------------------------
+# Main Application
+#-------------------------------------------------------------------------------
+
+def main():
+    """The main function for the script."""
+
+    # Parse the arguments, and run a basic sanity check on them.
+    args = parse_arguments()
+    sanity_check(args)
+
+    # Read out the frames from the video file, process them with background
+    # subtraction and extract the contour outline of the objects.
+    frames = process_video(args.video_file)
+
+    # For each frame, compute the polygonal approximation of the outlines.
+    frames_polygons = list()
     for frame in frames:
-        polygons = []
-        for poly in frame:
-            # Get array into the right shape
-            poly = np.reshape(poly, (poly.shape[0], poly.shape[2]))
-            polygons.append(thick_polygonal_approximate(poly, thickness))
-        thick_polygons.append(polygons)
+        polygons = list()
+        for polygon in frame:
+            # Reshape the polygon to the expected format, and approximate it
+            (num_points, _, num_dim) = polygon.shape
+            polygon_reshaped = np.reshape(polygon, [num_points, num_dim])
+            polygons.append(thick_polygonal_approximate(polygon_reshaped,
+                    args.thickness))
+        frames_polygons.append(polygons)
 
-    # Do something with the thick polygon
-    capture = cv2.VideoCapture(video_file)
+    # Open up the video file, for displaying the polygons overlaid on frames.
+    capture = cv2.VideoCapture(args.video_file)
     if not capture.isOpened():
-        print("Could not open file: ", video_file)
+        print("Error: {}: Unable to open video file.".format(args.video_file))
+        exit(1)
 
-    pos_frame = capture.get(cv2.cv.CV_CAP_PROP_POS_FRAMES)
-    i = 0
-    while True:
-        flag, frame = capture.read()
-        pos_frame = capture.get(cv2.cv.CV_CAP_PROP_POS_FRAMES)
+    # Extract the basename of the video wtihout its extension
+    (video_name, _) = path.splitext(args.video_file)
 
-        for thick_poly in thick_polygons[i]:
-            cv2.polylines(frame, np.int32([thick_poly]), True, (180,40,100), thickness=thickness/2)
+    # Iterate over each frame in the video, and overlay the polygons on each.
+    num_frames = int(round(capture.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)))
+    for i in range(num_frames):
+        # Read the next frame from the video, and overlay the polygons on it
+        (_, frame) = capture.read()
+        cv2.polylines(frame, frames_polygons[i], isClosed=True,
+                color=(180, 40, 100), thickness=int(round(args.thickness/2)))
 
-        cv2.imshow(video_file, frame)
-
-        i += 1
-
+        # Show the frame with the polygons overlaid. If the user presses any
+        # key, save the current frame to file.
+        cv2.imshow(args.video_file, frame)
         if cv2.waitKey(50) > 0:
-            print 'Saving file...'
-            cv2.imwrite('%s_%d.png' % (video_file, i), frame)
+            print("Saving file...")
+            cv2.imwrite("{}_{}.png".format(video_name, i), frame)
 
-        # End of video
-        if pos_frame == capture.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT):
-            break
-
+    # Destroy all the open windows
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
