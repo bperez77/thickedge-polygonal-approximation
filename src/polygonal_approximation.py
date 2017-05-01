@@ -21,8 +21,10 @@ This file's interface can be imported as follows:
 """
 
 # General Imports
-import numpy
 from collections import OrderedDict
+
+# Vision Imports
+import numpy
 
 #-------------------------------------------------------------------------------
 # Public Interface
