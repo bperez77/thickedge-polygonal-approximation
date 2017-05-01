@@ -46,6 +46,9 @@ def parse_arguments():
     parser.add_argument("-t", "--thickness", dest="thickness", type=float,
             required=True, help="The thickness parameter to use for the "
             "thick-edge polygonal approximation algorithm.")
+    parser.add_argument("-s", "--show-intermediate", dest="show_intermediate",
+            action="store_true", help="Display the intermediate steps of "
+            "processing on the video frame, along with the original display.")
 
     return parser.parse_args()
 
@@ -94,11 +97,13 @@ def main():
     # Iterate over each frame in the video, and overlay the polygons on each.
     num_frames = int(round(capture.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)))
     for i in range(num_frames):
-        # Read the next frame, extract the polygons, approximate them with
-        # thick-edge, and then overlay them on the video frame.
-        (frame, polygons) = process_frame(capture, show_intermediate=False)
+        # Read the next frame, extract the polygons, and approximate them.
+        (frame, polygons) = process_frame(capture,
+                show_intermediate=args.show_intermediate)
         thick_polygons = [thick_polygonal_approximate(polygon, args.thickness)
                 for polygon in polygons]
+
+        # Overlay the approximated polygon outlines for the current frame.
         cv2.polylines(frame, thick_polygons, isClosed=True,
                 color=(180, 40, 100), thickness=int(round(args.thickness/2)))
 
