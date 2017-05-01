@@ -6,8 +6,6 @@ polygonal_approximation_test.py
 Brandon Perez (bmperez)
 Sohil Shah (sohils)
 
-Wednesday, April 26, 2017 at 10:43:51 AM EDT
-
 This file contains the unit tests for the polygonal_approximation module,
 for the thick_polygonal_approximate function.
 """

@@ -6,8 +6,6 @@ outline_images.py
 Brandon Perez (bmperez)
 Sohil Shah (sohils)
 
-Friday, April 28, 2017 at 9:43:45 PM EDT
-
 This file contains a script for running polygonal approximation on a series of
 binary images.
 

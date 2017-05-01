@@ -6,8 +6,6 @@ run_thickline.py
 Brandon Perez (bmperez)
 Sohil Shah (sohils)
 
-Friday, April 28, 2017 at 12:40:48 PM EDT
-
 This file contains the main application for running the polygonal thick-edge
 approximation.
 
@@ -50,13 +48,7 @@ def parse_arguments():
             required=True, help="The thickness parameter to use for the "
             "thick-edge polygonal approximation algorithm.")
 
-    # Parse the arguments, check that the thickness is valid
-    args = parser.parse_args()
-    if args.thickness < 0:
-        print("Error: Thickness must be positive.")
-        exit(1)
-
-    return args
+    return parser.parse_args()
 
 def sanity_check(args):
     """Runs a basic sanity check on the arguments specified by the user."""

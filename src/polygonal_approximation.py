@@ -4,8 +4,6 @@ polygonal_approximation.py
 Brandon Perez (bmperez)
 Sohil Shah (sohils)
 
-Tuesday, April 25, 2017 at 04:28:33 PM EDT
-
 This file contains the implementation of polygonal approximation through
 dominant point detection.
 
