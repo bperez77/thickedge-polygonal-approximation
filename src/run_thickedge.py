@@ -183,12 +183,17 @@ def main():
         video_stream.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, args.camera_width)
         video_stream.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, args.camera_height)
 
+    # Inform the user of the camera resolution and the controls
+    print("\nThick Polygonal Approximation Application:")
+    print("\tVideo Stream Resolution:{:d}x{:d}".format(
+            int(round(video_stream.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH))),
+            int(round(video_stream.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT)))))
+    print("\tPress 's' to save the current frame, 'q' to quit.\n")
+
     # Iterate over each frame in the video, terminating early if the user sends
     # a keyboard interrupt.
     try:
         # Grab the initial frame and polygons from first video stream.
-        print("Thick Polygonal Approximation Application:")
-        print("Press 's' to save the current frame, 'q' to quit.")
         (frame, polygons) = process_frame(video_stream,
                 show_intermediate=args.show_intermediate)
 
@@ -206,8 +211,9 @@ def main():
             cv2.imshow(video_file, frame)
             key_pressed = chr(cv2.waitKey(50) & 0xFF)
             if key_pressed == 's':
-                print("Saving file...")
-                cv2.imwrite("{}_{}.png".format(video_name, frame_num), frame)
+                frame_path = "{}_{}.png".format(video_name, frame_num)
+                print("Saving frame to '{}'...".format(frame_path))
+                cv2.imwrite(frame_path, frame)
             elif key_pressed == 'q':
                 print("Quitting...")
                 break
