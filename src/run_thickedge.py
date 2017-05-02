@@ -19,7 +19,7 @@ on the video.
 
 # General Imports
 from os import path, access, R_OK
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Action, ArgumentError
 
 # Vision Imports
 import cv2
@@ -29,8 +29,53 @@ from polygonal_approximation import thick_polygonal_approximate
 from background_subtract import process_frame
 
 #-------------------------------------------------------------------------------
+# Internal Definitions
+#-------------------------------------------------------------------------------
+
+# The default camera resolution. This isn't actually a valid resolution, but
+# when this is passed to the `VideoCapture.set` function, it will cause the
+# camera to use its maximum resolution.
+DEFAULT_RESOLUTION = (10000, 10000)
+
+#-------------------------------------------------------------------------------
 # Command-Line Parsing and Sanity Checks
 #-------------------------------------------------------------------------------
+
+class ParseResolution(Action):
+    """An argparse action subclass for parsing image resolutions of the form
+    <int>x<int> on the command line."""
+
+    def __init__(self, option_strings, dest, **kwargs):
+        """Initialization method for the action. Simply invokes the super
+        method."""
+
+        super(ParseResolution, self).__init__(option_strings, dest, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        """The action method for the class. This parses the resolution values
+        from the given command line string, placing it in the namespace."""
+
+        # Parse either one resolution or a list of them, and set the associated
+        # destination attribute in the namespace.
+        if self.nargs is None:
+            resolution = self._parse_resolution(values)
+        else:
+            resolution = [self._parse_resolution(string) for string in values]
+        setattr(namespace, self.dest, resolution)
+
+    def _parse_resolution(self, string):
+        """Parses the given string as a resolution (widthxheight), returning a
+        (width, height) tuple."""
+
+        split = string.lower().split('x')
+        if len(split) != 2:
+            raise ArgumentError(self, "invalid image resolution value: "
+                    "'{}'".format(string))
+        try:
+            return (int(split[0]), int(split[1]))
+        except ValueError:
+            raise ArgumentError(self, "invalid image resolution value: "
+                    "'{}'".format(string))
 
 def parse_arguments():
     """Parses the arguments specified by the user on the command line."""
@@ -54,8 +99,19 @@ def parse_arguments():
     parser.add_argument("-s", "--show-intermediate", dest="show_intermediate",
             action="store_true", help="Display the intermediate steps of "
             "processing on the video frame, along with the original display.")
+    parser.add_argument("-r", "--camera-resolution", dest="camera_resolution",
+            action=ParseResolution, default=DEFAULT_RESOLUTION,
+            metavar="WIDTHxHEIGHT", help="The resolution to use for the "
+            "specified camera device. The nearest available resolution will be "
+            "used. By default, the maximum resolution is used.")
 
-    return parser.parse_args()
+    # Get the camera resolution, and move it to different names in the namespace
+    args = parser.parse_args()
+    (width, height) = args.camera_resolution
+    args.camera_width = width
+    args.camera_height = height
+
+    return args
 
 def sanity_check(args):
     """Runs a basic sanity check on the arguments specified by the user."""
@@ -73,6 +129,8 @@ def sanity_check(args):
                 "can be specified.")
     elif args.thickness <= 0:
         msg = "Error: Thickness must be positive."
+    elif args.camera_width <= 0 or args.camera_height <= 0:
+        msg = "Error: Image resolution must be a positive number."
     elif (args.video_file is not None) and (not path.exists(args.video_file)):
         msg = msg_template.format(args.video_file, "Video file does not exist.")
     elif (args.video_file is not None) and (not path.isfile(args.video_file)):
@@ -118,6 +176,12 @@ def main():
     else:
         video_file = "/dev/video{}".format(args.camera_id)
         video_name = "camera{}".format(args.camera_id)
+
+    # If a camera is being used, set it to its maximum resolution, or the one
+    # specified by the user.
+    if args.video_file is None:
+        video_stream.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, args.camera_width)
+        video_stream.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, args.camera_height)
 
     # Iterate over each frame in the video, terminating early if the user sends
     # a keyboard interrupt.
