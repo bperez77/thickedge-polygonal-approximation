@@ -37,6 +37,11 @@ from background_subtract import process_frame
 # camera to use its maximum resolution.
 DEFAULT_RESOLUTION = (10000, 10000)
 
+# The default thickness to use. When the thickness is between 0 and 1, it is
+# treated as a fraction of the smaller image dimension (typically the height).
+# In this case, this is 1% of that dimension.
+DEFAULT_THICKNESS = 0.01
+
 #-------------------------------------------------------------------------------
 # Command-Line Parsing and Sanity Checks
 #-------------------------------------------------------------------------------
@@ -94,16 +99,18 @@ def parse_arguments():
             "Typically, this is 0, as is the case when only one camera is "
             "connected to your computer.")
     parser.add_argument("-t", "--thickness", dest="thickness", type=float,
-            required=True, help="The thickness parameter to use for the "
-            "thick-edge polygonal approximation algorithm.")
-    parser.add_argument("-s", "--show-intermediate", dest="show_intermediate",
-            action="store_true", help="Display the intermediate steps of "
-            "processing on the video frame, along with the original display.")
+            default=DEFAULT_THICKNESS, help="The thickness parameter to use "
+            "for the thick-edge polygonal approximation algorithm. If this "
+            "value is between 0 and 1, then it is used as a fraction of the "
+            "smallest image dimension. Otherwise, it is treated as a distance.")
     parser.add_argument("-r", "--camera-resolution", dest="camera_resolution",
             action=ParseResolution, default=DEFAULT_RESOLUTION,
             metavar="WIDTHxHEIGHT", help="The resolution to use for the "
             "specified camera device. The nearest available resolution will be "
             "used. By default, the maximum resolution is used.")
+    parser.add_argument("-s", "--show-intermediate", dest="show_intermediate",
+            action="store_true", help="Display the intermediate steps of "
+            "processing on the video frame, along with the original display.")
 
     # Get the camera resolution, and move it to different names in the namespace
     args = parser.parse_args()
@@ -183,11 +190,19 @@ def main():
         video_stream.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, args.camera_width)
         video_stream.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, args.camera_height)
 
+    # If the thickness was specified as a fraction compute the thickness as the
+    # fraction of the smaller image dimension.
+    frame_width = int(round(video_stream.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH)))
+    frame_height = int(round(video_stream.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT)))
+    if args.thickness < 1.0:
+        thickness = args.thickness * min(frame_width, frame_height)
+    else:
+        thickness = args.thickness
+
     # Inform the user of the camera resolution and the controls
     print("\nThick Polygonal Approximation Application:")
-    print("\tVideo Stream Resolution:{:d}x{:d}".format(
-            int(round(video_stream.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH))),
-            int(round(video_stream.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT)))))
+    print("\tVideo Stream Resolution:{:d}x{:d}".format(frame_width,
+            frame_height))
     print("\tPress 's' to save the current frame, 'q' to quit.\n")
 
     # Iterate over each frame in the video, terminating early if the user sends
@@ -201,10 +216,10 @@ def main():
         frame_num = 0
         while frame is not None:
             # Approximate the polygons for the outlines, and overlay them.
-            thick_polygons = [thick_polygonal_approximate(polygon,
-                    args.thickness) for polygon in polygons]
+            thick_polygons = [thick_polygonal_approximate(polygon, thickness)
+                    for polygon in polygons]
             cv2.polylines(frame, thick_polygons, isClosed=True,
-                    color=(180, 40, 100), thickness=int(args.thickness/2))
+                    color=(180, 40, 100), thickness=int(thickness/2))
 
             # Show the frame with the polygons overlaid. If the user presses
             # 's', save the current frame. Quit if the user presses 'q'.
