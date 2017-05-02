@@ -82,7 +82,6 @@ def sanity_check(args):
 
     # Template for the error message
     msg_template = "Error: {}: {}"
-    msg = ""
 
     # Check that the thickness, data directory, and output directory are valid.
     if args.thickness <= 0 or args.thickness >= 1.0:
