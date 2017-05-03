@@ -201,7 +201,7 @@ def main():
 
     # Inform the user of the camera resolution and the controls
     print("\nThick Polygonal Approximation Application:")
-    print("\tVideo Stream Resolution:{:d}x{:d}".format(frame_width,
+    print("\tVideo Stream Resolution: {:d}x{:d}".format(frame_width,
             frame_height))
     print("\tPress 's' to save the current frame, 'q' to quit.")
     print("\tPress 'r' to reset the background subtraction algorithm's "
