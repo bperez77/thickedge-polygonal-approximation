@@ -20,14 +20,13 @@ or a file. The processing steps are as follows:
   - Output as list of list of points
 
 The background subtraction library used here can be found at:
-https://github.com/andrewssobral/bgslibrary
+    https://github.com/andrewssobral/bgslibrary
 
 Requirements:
   - libbgs requires that there is a folder named 'config' in the directory
-    it is run from
+    it is run from (that already exists).
   - Requires python2
-  - Requires OpenCV 2
-
+  - Requires OpenCV2
 """
 
 # Vision Imports
@@ -37,28 +36,36 @@ import cv2
 # Background subtraction library import.
 import libbgs
 
-#-------------------------------------------------------------------------------
-# Internal Definitions
-#-------------------------------------------------------------------------------
-
-# The algorithm that is used for background subtraction. Change the class used
-# to change the algorithm. The algorithm that was found to work the best was
-# MultiCue background subtraction. The paper can be found at:
-#  https://link.springer.com/chapter/10.1007%2F978-3-642-37431-9_38
-#
-# Some other good algorithms were:
-#   1. Independent Multimodal Background Subtraction
-#   2. Mixture of Gaussians Background Subtraction.
-#
-# A complete list of the BGS library's available algorithms is at:
-#  https://github.com/andrewssobral/bgslibrary/wiki/List-of-available-algorithms
-BGS = libbgs.MultiCue()
-
 #------------------------------------------------------------------------------
 # Public Interface
 #------------------------------------------------------------------------------
 
-def process_frame(video_stream, show_intermediate=False):
+def init_bgs():
+    """Initializes and returns a background subtraction algorithm object.
+
+    To reset the algorithm class's state, invoke this function again, and assign
+    it to the same variable. This will automatically deconstruct the previous
+    instance of the algorithm.
+
+    Outputs:
+        (libbgs.Algorithm): A BGS library algorithm class instance, that
+            implements one of the many variants of background subtraction.
+    """
+
+    # Change this class to change the background subtraction algorithm The
+    # algorithm that was found to work the best was MultiCue background
+    # subtraction. The paper for this algorithm can be found at:
+    #   https://link.springer.com/chapter/10.1007%2F978-3-642-37431-9_38
+    #
+    # Some other good algorithms were:
+    #   1. Independent Multimodal Background Subtraction
+    #   2. Mixture of Gaussians Background Subtraction.
+    #
+    # A complete list of the BGS library's available algorithms on its Github
+    # wiki.
+    return libbgs.MultiCue()
+
+def process_frame(bgs_algorithm, video_stream, show_intermediate=False):
     """Reads the next frame from the video stream, detects all the moving
     objects in the frame, and returns polygons representing their outlines.
 
@@ -66,6 +73,8 @@ def process_frame(video_stream, show_intermediate=False):
     camera is disconnected), then this returns None.
 
     Args:
+        bgs_algorithm (libbgs.Algorithm): The BGS library algorithm class to use
+            for background subtraction.
         video_stream cv2.VideoCapture): The VideoCapture object representing the
             video stream (either a camera or video file), from which the next
             frame is read.
@@ -91,7 +100,8 @@ def process_frame(video_stream, show_intermediate=False):
 
     # Subtract the background from the frame to get the moving objects, and
     # process it to get their edges.
-    (bgs_frame, postprocessed_frame, edge_frame) = _find_moving_edges(frame)
+    (bgs_frame, postprocessed_frame, edge_frame) = _find_moving_edges(
+            bgs_algorithm, frame)
 
     # If requested, show the intermediate processing steps as images.
     if show_intermediate:
@@ -108,12 +118,12 @@ def process_frame(video_stream, show_intermediate=False):
 # Helper Functions
 #------------------------------------------------------------------------------
 
-def _find_moving_edges(image):
-    """Using background subtraction and various preprocessing steps, find the
-    edges of moving objects in the image."""
+def _find_moving_edges(bgs_algorithm, image):
+    """Using the given background subtraction algorithm and various
+    preprocessing steps, find the edges of moving objects in the image."""
 
     # Apply background subtraction to get a mask for moving objects.
-    bgs_image = BGS.apply(image)
+    bgs_image = bgs_algorithm.apply(image)
 
     # Process the mask to fill in holes and generally smooth it out, leading to
     # a better result. Note that None indicates to use a 3x3 Gaussian kernel.

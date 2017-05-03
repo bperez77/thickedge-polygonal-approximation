@@ -26,7 +26,7 @@ import cv2
 
 # Local Imports
 from polygonal_approximation import thick_polygonal_approximate
-from background_subtract import process_frame
+from background_subtract import init_bgs, process_frame
 
 #-------------------------------------------------------------------------------
 # Internal Definitions
@@ -203,13 +203,14 @@ def main():
     print("\nThick Polygonal Approximation Application:")
     print("\tVideo Stream Resolution:{:d}x{:d}".format(frame_width,
             frame_height))
-    print("\tPress 's' to save the current frame, 'q' to quit.\n")
+    print("\tPress 's' to save the current frame, 'q' to quit.")
+    print("\tPress 'r' to reset the background subtraction algorithm's "
+            "state.\n")
 
-    # Iterate over each frame in the video, terminating early if the user sends
-    # a keyboard interrupt.
     try:
-        # Grab the initial frame and polygons from first video stream.
-        (frame, polygons) = process_frame(video_stream,
+        # Initialize the BGS, grab the polygons from the first frame.
+        bgs_algorithm = init_bgs()
+        (frame, polygons) = process_frame(bgs_algorithm, video_stream,
                 show_intermediate=args.show_intermediate)
 
         # While frames remain, iterate over each and overlay the polygons.
@@ -221,11 +222,15 @@ def main():
             cv2.polylines(frame, thick_polygons, isClosed=True,
                     color=(180, 40, 100), thickness=int(thickness/2))
 
-            # Show the frame with the polygons overlaid. If the user presses
-            # 's', save the current frame. Quit if the user presses 'q'.
+            # Show the frame with the polygons overlaid, and process user keys.
             cv2.imshow(video_file, frame)
             key_pressed = chr(cv2.waitKey(50) & 0xFF)
-            if key_pressed == 's':
+
+            # Take the appropriate action based on the key that was pressed.
+            if key_pressed == 'r':
+                print("Resetting background subtraction algorithm state...")
+                bgs_algorithm = init_bgs()
+            elif key_pressed == 's':
                 frame_path = "{}_{}.png".format(video_name, frame_num)
                 print("Saving frame to '{}'...".format(frame_path))
                 cv2.imwrite(frame_path, frame)
@@ -234,7 +239,7 @@ def main():
                 break
 
             # Read the next frame and extract its polygons
-            (frame, polygons) = process_frame(video_stream,
+            (frame, polygons) = process_frame(bgs_algorithm, video_stream,
                     show_intermediate=args.show_intermediate)
             frame_num += 1
 
