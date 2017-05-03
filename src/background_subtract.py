@@ -37,10 +37,22 @@ import cv2
 # Background subtraction library import.
 import libbgs
 
-# Choose here which algorithm to use for background subtraction
-# A list of algorithms is available at:
-# https://github.com/andrewssobral/bgslibrary/wiki/List-of-available-algorithms
-BGS = libbgs.LBMixtureOfGaussians()
+#-------------------------------------------------------------------------------
+# Internal Definitions
+#-------------------------------------------------------------------------------
+
+# The algorithm that is used for background subtraction. Change the class used
+# to change the algorithm. The algorithm that was found to work the best was
+# MultiCue background subtraction. The paper can be found at:
+#  https://link.springer.com/chapter/10.1007%2F978-3-642-37431-9_38
+#
+# Some other good algorithms were:
+#   1. Independent Multimodal Background Subtraction
+#   2. Mixture of Gaussians Background Subtraction.
+#
+# A complete list of the BGS library's available algorithms is at:
+#  https://github.com/andrewssobral/bgslibrary/wiki/List-of-available-algorithms
+BGS = libbgs.MultiCue()
 
 #------------------------------------------------------------------------------
 # Public Interface
