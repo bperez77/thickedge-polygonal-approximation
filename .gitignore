@@ -38,6 +38,10 @@
 !*.bst
 !*.bib
 
+# Allow for word documents and power points
+!*.docx
+!*.pptx
+
 # Allow for gitignore, gitmodules, license, and README files
 !.gitignore
 !.gitmodules
