@@ -23,14 +23,20 @@
 # Allow for Makefiles
 !Makefile
 
-# Allow for video and image files in the data directory
+# Allow for video and image files in the data and papers directories
 !/data/**/*.avi
 !/data/**/*.png
 !/data/**/*.jpg
+!/paper/**/*.png
 
-# Allow for Latex and XML files
+# Allow for XML files
 !*.xml
+
+# Allow for Latex files
 !*.tex
+!*.sty
+!*.bst
+!*.bib
 
 # Allow for gitignore, gitmodules, license, and README files
 !.gitignore
